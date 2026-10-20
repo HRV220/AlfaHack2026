@@ -1,0 +1,26 @@
+{
+  "event_id": "94e9f961-03e6-57de-82d8-adaf48480777",
+  "type": "application.submitted",
+  "source": "core-api",
+  "time": "2026-10-14T09:00:00+07:00",
+  "subject": "7bb3e44c-ae48-5fcc-8623-d35b05153c68",
+  "schema_version": "1.0.0",
+  "correlation_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "data": {
+    "application_id": "7bb3e44c-ae48-5fcc-8623-d35b05153c68",
+    "application_version": 1,
+    "inn": "7707083893",
+    "recommendation_id": "6401356b-3290-5847-9dc7-3103118775a2",
+    "params": {
+      "product_code": "P2",
+      "amount": 2000000.0,
+      "term_months": 5,
+      "goal": "PURCHASE",
+      "collateral": [],
+      "obligations": []
+    },
+    "has_unverified_statement": false,
+    "has_client_edits": false,
+    "pending_document_ids": []
+  }
+}

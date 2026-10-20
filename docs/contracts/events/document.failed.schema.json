@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.smart-credit.local/events/document.failed.schema.json",
+  "title": "data события document.failed",
+  "description": "doc-service → core-api. Файл отклонён проверкой DOC-01 или не распознан технически.",
+  "type": "object",
+  "properties": {
+    "document_id": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+    },
+    "application_id": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+    },
+    "inn": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Inn"
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "TYPE_NOT_ALLOWED",
+        "TOO_LARGE",
+        "INFECTED",
+        "MACRO",
+        "UNREADABLE"
+      ]
+    },
+    "details": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "document_id",
+    "application_id",
+    "inn",
+    "reason",
+    "details"
+  ],
+  "additionalProperties": false
+}

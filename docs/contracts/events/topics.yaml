@@ -1,0 +1,101 @@
+# Реестр топиков брокера (Redpanda в прототипе, Kafka в банке).
+# Доставка — как минимум один раз; порядок гарантируется в пределах ключа.
+# Каждое сообщение — конверт envelope.schema.json, поле data — схема из колонки schema.
+# Для каждого топика создаётся <name>.dlq: 3 повтора с задержкой 1 с, 5 с, 25 с, затем DLQ.
+# Совместимость схем в Schema Registry: BACKWARD. Ломающее изменение = новый мажор schema_version и новый топик <name>.v2.
+
+defaults:
+  partitions: 3
+  replication_factor: 1        # прототип; в банке — 3
+  retention_hours: 168         # 7 дней
+  dlq_retention_hours: 336     # 14 дней
+  retry_backoff_seconds: [1, 5, 25]
+
+topics:
+  - name: bank.transactions_updated
+    key: inn
+    producer: bank-sim
+    consumers: [ml-service]
+    schema: bank.transactions_updated.schema.json
+    schema_version: 1.0.0
+    requirements: [REG-07]
+
+  - name: document.uploaded
+    key: application_id
+    producer: core-api
+    consumers: [doc-service]
+    schema: document.uploaded.schema.json
+    schema_version: 1.0.0
+    requirements: [DOC-01, DOC-02]
+
+  - name: document.parsed
+    key: application_id
+    producer: doc-service
+    consumers: [core-api, ml-service]
+    schema: document.parsed.schema.json
+    schema_version: 1.0.0
+    requirements: [DOC-03, DOC-04, DOC-05, DOC-08, DOC-09]
+
+  - name: document.failed
+    key: application_id
+    producer: doc-service
+    consumers: [core-api]
+    schema: document.failed.schema.json
+    schema_version: 1.0.0
+    requirements: [DOC-01, DOC-02]
+
+  - name: profile.updated
+    key: inn
+    producer: ml-service
+    consumers: [core-api]
+    schema: profile.updated.schema.json
+    schema_version: 1.0.0
+    requirements: [PRF-01, REC-10, DOC-08]
+
+  - name: cashflow.forecast_ready
+    key: inn
+    producer: ml-service
+    consumers: [core-api]
+    schema: cashflow.forecast_ready.schema.json
+    schema_version: 1.0.0
+    requirements: [CF-03]
+
+  - name: cashflow.gap_detected
+    key: inn
+    producer: ml-service
+    consumers: [core-api]
+    schema: cashflow.gap_detected.schema.json
+    schema_version: 1.0.0
+    requirements: [CF-04, CF-05, CF-06]
+
+  - name: application.submitted
+    key: application_id
+    producer: core-api
+    consumers: [ml-service]
+    schema: application.submitted.schema.json
+    schema_version: 1.0.0
+    requirements: [APP-03, SC-01, SC-04]
+
+  - name: decision.made
+    key: application_id
+    producer: ml-service
+    consumers: [core-api]
+    schema: decision.made.schema.json
+    schema_version: 1.0.0
+    requirements: [SC-04, SC-06, SC-07, SC-08]
+
+  - name: application.status_changed
+    key: application_id
+    producer: core-api
+    consumers: [analytics]
+    schema: application.status_changed.schema.json
+    schema_version: 1.0.0
+    requirements: [APP-05]
+
+  - name: recommendation.made
+    key: inn
+    producer: core-api
+    consumers: [analytics]
+    schema: recommendation.made.schema.json
+    schema_version: 1.0.0
+    requirements: [REC-08, Q-08, Q-09]

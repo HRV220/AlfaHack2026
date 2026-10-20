@@ -1,0 +1,16 @@
+{
+  "event_id": "b23940e9-a867-5747-865b-1303e27a94b0",
+  "type": "document.failed",
+  "source": "doc-service",
+  "time": "2026-10-14T09:00:00+07:00",
+  "subject": "7bb3e44c-ae48-5fcc-8623-d35b05153c68",
+  "schema_version": "1.0.0",
+  "correlation_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "data": {
+    "document_id": "bec2d545-4509-5ae6-9bdb-68ac7265f0eb",
+    "application_id": "7bb3e44c-ae48-5fcc-8623-d35b05153c68",
+    "inn": "7707083893",
+    "reason": "INFECTED",
+    "details": "ClamAV: Eicar-Signature"
+  }
+}

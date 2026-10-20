@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.smart-credit.local/sse/chat-events.schema.json",
+  "title": "События SSE ответа ассистента (POST /chat/sessions/{id}/messages)",
+  "description": "Каждое SSE-сообщение: строка `event: <имя>` и строка `data: <JSON>`. Ниже — схема пары {event, data}.",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "delta"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "message_id": {
+              "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "message_id",
+            "text"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "event",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Очередное проверенное предложение текста"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "tool"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "STARTED",
+                "FINISHED"
+              ]
+            }
+          },
+          "required": [
+            "name",
+            "status"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "event",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Выполняется инструмент — для индикатора «смотрю прогноз…»"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "need"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "need": {
+              "$ref": "../schemas/domain.schema.json#/$defs/Need"
+            }
+          },
+          "required": [
+            "need"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "event",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Карточка понятой потребности (NEED-04)"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "question"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "question": {
+              "$ref": "../schemas/domain.schema.json#/$defs/Question"
+            }
+          },
+          "required": [
+            "question"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "event",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Уточняющий вопрос с кнопками (NEED-05)"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "recommendation"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "recommendation_id": {
+              "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+            },
+            "best_product_code": {
+              "anyOf": [
+                {
+                  "$ref": "../schemas/domain.schema.json#/$defs/ProductCode"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "recommendation_id",
+            "best_product_code"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "event",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Готов подбор — карточку и сравнение рисовать из GET /recommendations/{id}"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "action"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "$ref": "../schemas/domain.schema.json#/$defs/PendingAction"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "event",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Карточка действия (AI-11)"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "escalation"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "escalation": {
+              "$ref": "../schemas/domain.schema.json#/$defs/Escalation"
+            }
+          },
+          "required": [
+            "escalation"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "event",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Создано обращение (AI-07)"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "done"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "message_id": {
+              "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+            },
+            "stage": {
+              "$ref": "../schemas/domain.schema.json#/$defs/ChatStage"
+            }
+          },
+          "required": [
+            "message_id",
+            "stage"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "event",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Конец ответа"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "error"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "$ref": "../schemas/domain.schema.json#/$defs/ErrorCode"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "text"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "event",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Ошибка; text — безопасный текст для клиента"
+    }
+  ]
+}

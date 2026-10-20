@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.smart-credit.local/events/envelope.schema.json",
+  "title": "Конверт события",
+  "description": "Каждое сообщение в брокере — этот конверт; поле data валидируется схемой топика (events/<type>.schema.json).",
+  "type": "object",
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Уникальный идентификатор; по нему потребитель обеспечивает идемпотентность"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "bank.transactions_updated",
+        "document.uploaded",
+        "document.parsed",
+        "document.failed",
+        "profile.updated",
+        "cashflow.forecast_ready",
+        "cashflow.gap_detected",
+        "application.submitted",
+        "decision.made",
+        "application.status_changed",
+        "recommendation.made"
+      ],
+      "description": "Совпадает с именем топика"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "core-api",
+        "ml-service",
+        "doc-service",
+        "bank-sim"
+      ],
+      "description": "Сервис-производитель"
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Ключ партиционирования: ИНН или application_id (topics.yaml)"
+    },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "correlation_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$",
+      "description": "trace id OpenTelemetry"
+    },
+    "data": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "event_id",
+    "type",
+    "source",
+    "time",
+    "subject",
+    "schema_version",
+    "correlation_id",
+    "data"
+  ],
+  "additionalProperties": false
+}

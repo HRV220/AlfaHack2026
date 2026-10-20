@@ -1,0 +1,104 @@
+openapi: 3.1.0
+info:
+  title: bank-sim — имитация АБС и витрины РКО
+  version: 1.0.0
+  description: |
+    Внутренний сервис с контрактом «как у банка» (архитектура 10.3). В банке тот же контракт реализуют адаптеры АБС, витрины РКО, БКИ и антифрода.
+    При первом обращении по ИНН генерирует данные (REG-07): зерно — ИНН, отраслевая группа и возраст — из реестра (передаются заголовками),
+    затем публикует событие bank.transactions_updated. Для демо-компаний DC-1…DC-5 данные заданы вручную.
+    Все данные синтетические (поле demo = true).
+servers:
+  - url: http://bank-sim:8080
+paths:
+  /health:
+    get:
+      operationId: health
+      responses:
+        '200': {description: Готов}
+  /accounts:
+    get:
+      operationId: listAccounts
+      summary: Счета компании; генерация при первом обращении
+      parameters:
+        - name: inn
+          in: query
+          required: true
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Inn'}
+        - name: X-Industry-Group
+          in: header
+          required: true
+          description: Отраслевая группа из реестра — для генерации
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/IndustryGroup'}
+        - name: X-Registered-At
+          in: header
+          required: true
+          description: Дата регистрации из реестра — для генерации
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Date'}
+      responses:
+        '200':
+          description: Счета
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '../schemas/domain.schema.json#/$defs/Account'}
+  /accounts/{account_id}/transactions:
+    get:
+      operationId: listTransactions
+      summary: Операции по счёту за период (по умолчанию 12 мес.)
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+        - name: from
+          in: query
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Date'}
+        - name: to
+          in: query
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Date'}
+      responses:
+        '200':
+          description: Операции по дате по возрастанию
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '../schemas/domain.schema.json#/$defs/BankTransaction'}
+        '404':
+          description: Счёт не найден
+          content:
+            application/problem+json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+  /credit-history:
+    get:
+      operationId: getCreditHistory
+      summary: Кредитная история (имитация БКИ)
+      parameters:
+        - name: inn
+          in: query
+          required: true
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Inn'}
+      responses:
+        '200':
+          description: Кредиты
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '../schemas/domain.schema.json#/$defs/Loan'}
+  /fraud-flags:
+    get:
+      operationId: getFraudFlag
+      summary: Флаг антифрода (DATA-04)
+      parameters:
+        - name: inn
+          in: query
+          required: true
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Inn'}
+      responses:
+        '200':
+          description: Флаг
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/FraudFlag'}

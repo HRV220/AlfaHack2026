@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.smart-credit.local/events/decision.made.schema.json",
+  "title": "data события decision.made",
+  "description": "ml-service → core-api. Решение скоринга со снимком (SC-07).",
+  "type": "object",
+  "properties": {
+    "decision": {
+      "$ref": "../schemas/domain.schema.json#/$defs/DecisionBody"
+    },
+    "latency_ms": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "decision",
+    "latency_ms"
+  ],
+  "additionalProperties": false
+}

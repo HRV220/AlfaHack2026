@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.smart-credit.local/events/application.status_changed.schema.json",
+  "title": "data события application.status_changed",
+  "description": "core-api → аналитика. Переход статуса заявки (для TTD и воронки).",
+  "type": "object",
+  "properties": {
+    "application_id": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+    },
+    "application_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "inn": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Inn"
+    },
+    "from": {
+      "anyOf": [
+        {
+          "$ref": "../schemas/domain.schema.json#/$defs/ApplicationStatus"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "to": {
+      "$ref": "../schemas/domain.schema.json#/$defs/ApplicationStatus"
+    },
+    "at": {
+      "$ref": "../schemas/domain.schema.json#/$defs/DateTime"
+    },
+    "actor": {
+      "type": "string",
+      "enum": [
+        "CLIENT",
+        "SYSTEM",
+        "UNDERWRITER"
+      ]
+    }
+  },
+  "required": [
+    "application_id",
+    "application_version",
+    "inn",
+    "from",
+    "to",
+    "at",
+    "actor"
+  ],
+  "additionalProperties": false
+}

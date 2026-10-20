@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.smart-credit.local/sse/stream-events.schema.json",
+  "title": "События общего потока GET /events/stream",
+  "description": "Каждое SSE-сообщение: строка `event: <имя>` и строка `data: <JSON>`. Ниже — схема пары {event, data}.",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "application.status"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "application_id": {
+              "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+            },
+            "status": {
+              "$ref": "../schemas/domain.schema.json#/$defs/ApplicationStatus"
+            },
+            "status_text": {
+              "type": "string"
+            },
+            "next_step_text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "application_id",
+            "status",
+            "status_text",
+            "next_step_text"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "event",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Статус заявки изменился (APP-05)"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "insight.created"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "insight": {
+              "$ref": "../schemas/domain.schema.json#/$defs/Insight"
+            }
+          },
+          "required": [
+            "insight"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "event",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Новая карточка разрыва (CF-06)"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "document.status"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "document_id": {
+              "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+            },
+            "application_id": {
+              "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+            },
+            "status": {
+              "$ref": "../schemas/domain.schema.json#/$defs/DocumentStatus"
+            },
+            "reject_reason": {
+              "anyOf": [
+                {
+                  "$ref": "../schemas/domain.schema.json#/$defs/DocumentRejectReason"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "document_id",
+            "application_id",
+            "status",
+            "reject_reason"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "event",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Статус документа (DOC-02)"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "recommendation.updated"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "recommendation_id": {
+              "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+            },
+            "previous_id": {
+              "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+            },
+            "changes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "field": {
+                    "type": "string",
+                    "description": "best_product_code, amount_available, chance"
+                  },
+                  "before": {},
+                  "after": {}
+                },
+                "required": [
+                  "field",
+                  "before",
+                  "after"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "message": {
+              "type": "string",
+              "description": "Текст для клиента: «Доступная сумма выросла с X до Y ₽»"
+            }
+          },
+          "required": [
+            "recommendation_id",
+            "previous_id",
+            "changes",
+            "message"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "event",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Подбор пересчитан после новых данных (REC-10, DOC-08)"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "ping"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "at": {
+              "$ref": "../schemas/domain.schema.json#/$defs/DateTime"
+            }
+          },
+          "required": [
+            "at"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "event",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Поддержание соединения раз в 15 с"
+    }
+  ]
+}

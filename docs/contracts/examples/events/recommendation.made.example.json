@@ -1,0 +1,22 @@
+{
+  "event_id": "58f5ca8e-5999-5d65-82a2-3a96df6a3c01",
+  "type": "recommendation.made",
+  "source": "core-api",
+  "time": "2026-10-14T09:00:00+07:00",
+  "subject": "7707083893",
+  "schema_version": "1.0.0",
+  "correlation_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "data": {
+    "recommendation_id": "6401356b-3290-5847-9dc7-3103118775a2",
+    "inn": "7707083893",
+    "need_id": "92abd506-d9a5-5c23-9194-a27d35de4ca3",
+    "trigger": "CLIENT",
+    "best_product_code": "P2",
+    "best_chance": "HIGH",
+    "alternative_product_codes": [
+      "P3"
+    ],
+    "questions_asked": 1,
+    "latency_ms": 840
+  }
+}

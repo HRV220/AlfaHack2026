@@ -1,0 +1,20 @@
+{
+  "event_id": "84a3ddab-0cd0-5ace-bf63-52acff590c46",
+  "type": "document.uploaded",
+  "source": "core-api",
+  "time": "2026-10-14T09:00:00+07:00",
+  "subject": "7bb3e44c-ae48-5fcc-8623-d35b05153c68",
+  "schema_version": "1.0.0",
+  "correlation_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "data": {
+    "document_id": "fe86a2f9-df65-5499-b262-d471e0520373",
+    "application_id": "7bb3e44c-ae48-5fcc-8623-d35b05153c68",
+    "inn": "7707083893",
+    "document_type": "D1_OTHER_BANK_STATEMENT",
+    "object_key": "documents/quarantine/fe86a2f9-df65-5499-b262-d471e0520373.pdf",
+    "filename": "vypiska.pdf",
+    "mime_declared": "application/pdf",
+    "size_bytes": 482113,
+    "needs_parsing": true
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "event_id": "d7eacb37-249b-53f0-be0b-3f464a0936b1",
+  "type": "cashflow.forecast_ready",
+  "source": "ml-service",
+  "time": "2026-10-14T09:00:00+07:00",
+  "subject": "7707083893",
+  "schema_version": "1.0.0",
+  "correlation_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "data": {
+    "inn": "7707083893",
+    "forecast_id": "0e077429-6f68-561c-8ba8-95af650b3686",
+    "horizon_days": 90,
+    "model_version": "forecast-1.0.0",
+    "generated_at": "2026-10-14T09:00:00+07:00"
+  }
+}

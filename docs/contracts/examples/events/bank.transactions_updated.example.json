@@ -1,0 +1,18 @@
+{
+  "event_id": "be9462e5-ed07-5de8-a46a-2c46d5e64676",
+  "type": "bank.transactions_updated",
+  "source": "bank-sim",
+  "time": "2026-10-14T09:00:00+07:00",
+  "subject": "7707083893",
+  "schema_version": "1.0.0",
+  "correlation_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "data": {
+    "inn": "7707083893",
+    "account_ids": [
+      "8e0e33c1-1a00-5549-9609-9f447a965379"
+    ],
+    "period_from": "2025-10-14",
+    "period_to": "2026-10-13",
+    "new_count": 2814
+  }
+}

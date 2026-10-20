@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.smart-credit.local/events/cashflow.gap_detected.schema.json",
+  "title": "data события cashflow.gap_detected",
+  "description": "ml-service → core-api. Найден разрыв в ближайшие 30 дней (CF-04); core-api формирует потребность по CF-05 и карточку CF-06.",
+  "type": "object",
+  "properties": {
+    "inn": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Inn"
+    },
+    "forecast_id": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+    },
+    "gap": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Gap"
+    }
+  },
+  "required": [
+    "inn",
+    "forecast_id",
+    "gap"
+  ],
+  "additionalProperties": false
+}

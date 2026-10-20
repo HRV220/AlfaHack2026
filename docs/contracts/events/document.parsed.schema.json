@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.smart-credit.local/events/document.parsed.schema.json",
+  "title": "data события document.parsed",
+  "description": "doc-service → core-api, ml-service. Файл прошёл проверку; для D1/D3 — распознан. accepted=false — не прошёл DOC-04 и не учитывается в профиле.",
+  "type": "object",
+  "properties": {
+    "document_id": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+    },
+    "application_id": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+    },
+    "inn": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Inn"
+    },
+    "document_type": {
+      "$ref": "../schemas/domain.schema.json#/$defs/DocumentType"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ACCEPTED",
+        "PARSED",
+        "REPLACE_REQUIRED"
+      ]
+    },
+    "accepted": {
+      "type": "boolean"
+    },
+    "reject_reason": {
+      "anyOf": [
+        {
+          "$ref": "../schemas/domain.schema.json#/$defs/DocumentRejectReason"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "clean_object_key": {
+      "type": "string",
+      "pattern": "^documents/clean/"
+    },
+    "result": {
+      "anyOf": [
+        {
+          "oneOf": [
+            {
+              "$ref": "../schemas/domain.schema.json#/$defs/StatementParseResult"
+            },
+            {
+              "$ref": "../schemas/domain.schema.json#/$defs/FinancialStatementsResult"
+            }
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "latency_ms": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "document_id",
+    "application_id",
+    "inn",
+    "document_type",
+    "status",
+    "accepted",
+    "reject_reason",
+    "clean_object_key",
+    "result",
+    "latency_ms"
+  ],
+  "additionalProperties": false
+}

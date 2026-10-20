@@ -1,0 +1,18 @@
+{
+  "event_id": "8df0a290-16c3-5f7e-9f0a-c77cebdecd51",
+  "type": "application.status_changed",
+  "source": "core-api",
+  "time": "2026-10-14T09:00:00+07:00",
+  "subject": "7bb3e44c-ae48-5fcc-8623-d35b05153c68",
+  "schema_version": "1.0.0",
+  "correlation_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "data": {
+    "application_id": "7bb3e44c-ae48-5fcc-8623-d35b05153c68",
+    "application_version": 1,
+    "inn": "7707083893",
+    "from": "CHECKING",
+    "to": "APPROVED",
+    "at": "2026-10-14T09:03:06+07:00",
+    "actor": "SYSTEM"
+  }
+}

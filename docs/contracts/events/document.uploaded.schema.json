@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.smart-credit.local/events/document.uploaded.schema.json",
+  "title": "data события document.uploaded",
+  "description": "core-api → doc-service. Файл сохранён в карантин MinIO.",
+  "type": "object",
+  "properties": {
+    "document_id": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+    },
+    "application_id": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+    },
+    "inn": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Inn"
+    },
+    "document_type": {
+      "$ref": "../schemas/domain.schema.json#/$defs/DocumentType"
+    },
+    "object_key": {
+      "type": "string",
+      "pattern": "^documents/quarantine/"
+    },
+    "filename": {
+      "type": "string"
+    },
+    "mime_declared": {
+      "type": "string"
+    },
+    "size_bytes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10485760
+    },
+    "needs_parsing": {
+      "type": "boolean",
+      "description": "true для D1 (S2) и D3 (S6); иначе только проверка файла"
+    }
+  },
+  "required": [
+    "document_id",
+    "application_id",
+    "inn",
+    "document_type",
+    "object_key",
+    "filename",
+    "mime_declared",
+    "size_bytes",
+    "needs_parsing"
+  ],
+  "additionalProperties": false
+}

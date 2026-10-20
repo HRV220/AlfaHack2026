@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.smart-credit.local/events/application.submitted.schema.json",
+  "title": "data события application.submitted",
+  "description": "core-api → ml-service. Заявка подана; ml-service считает решение (SC-01…SC-07).",
+  "type": "object",
+  "properties": {
+    "application_id": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+    },
+    "application_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "inn": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Inn"
+    },
+    "recommendation_id": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+    },
+    "params": {
+      "$ref": "../schemas/domain.schema.json#/$defs/ApplicationParams"
+    },
+    "has_unverified_statement": {
+      "type": "boolean"
+    },
+    "has_client_edits": {
+      "type": "boolean"
+    },
+    "pending_document_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+      },
+      "description": "Выписки, ещё не распознанные; скоринг ждёт их document.parsed"
+    }
+  },
+  "required": [
+    "application_id",
+    "application_version",
+    "inn",
+    "recommendation_id",
+    "params",
+    "has_unverified_statement",
+    "has_client_edits",
+    "pending_document_ids"
+  ],
+  "additionalProperties": false
+}

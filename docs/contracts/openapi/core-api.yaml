@@ -1,0 +1,1234 @@
+openapi: 3.1.0
+info:
+  title: core-api — публичный API «Умного кредитного кабинета»
+  version: 1.0.0
+  description: |
+    Публичный API для web (кабинет клиента и панель андеррайтера). Требования — ТЗ 4.1, архитектура раздел 13.
+
+    Соглашения:
+    - Базовый путь `/api/v1`. Формат — JSON в UTF-8, имена полей — snake_case.
+    - Деньги — число в рублях до копеек; ставки и вероятности — доли (0.18 = 18%); даты — ISO 8601.
+    - Аутентификация — httpOnly-cookie `session` (JWT, 8 ч). Изменяющие запросы передают заголовок `X-CSRF-Token` из `GET /auth/me`.
+    - Ошибки — `application/problem+json` (RFC 9457) с машинным полем `code`.
+    - Изменяющие запросы, отмеченные `Idempotency-Key`, при повторе с тем же ключом возвращают первый ответ; с тем же ключом и другим телом — 409 IDEMPOTENCY_CONFLICT.
+    - Каждый ответ содержит заголовок `traceparent` (W3C) — тот же trace id, что `correlation_id` в событиях.
+    - Компания определяется только из сессии (NFR-13); ИНН в пути и теле запросов клиента не принимается, кроме входа.
+servers:
+  - url: /api/v1
+security:
+  - session: []
+tags:
+  - name: auth
+    description: Вход и реестр (REG-01…REG-06)
+  - name: profile
+    description: Профиль компании (REG-08, PRF)
+  - name: catalog
+    description: Каталог и справочники (CAT)
+  - name: needs
+    description: Потребность (NEED)
+  - name: recommendations
+    description: Подбор (REC)
+  - name: what-if
+    description: «Что сделать, чтобы одобрили» (WI, S1)
+  - name: cashflow
+    description: Финансовый пульс и разрывы (CF, S3)
+  - name: applications
+    description: Заявка и решение (APP, SC)
+  - name: documents
+    description: Документы (DOC)
+  - name: assistant
+    description: Ассистент и обращения (AI)
+  - name: events
+    description: Поток событий для интерфейса
+  - name: underwriter
+    description: Панель андеррайтера (UW)
+
+paths:
+  # ---------------- вход и реестр ----------------
+  /registry/{inn}:
+    get:
+      tags: [auth]
+      operationId: getRegistryPreview
+      summary: Предпросмотр компании по ИНН (REG-01, REG-02, REG-06)
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/InnPath'
+      responses:
+        '200':
+          description: Компания найдена
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/CompanyPreview'}
+        '422': {$ref: '#/components/responses/InnInvalid'}
+        '404': {$ref: '#/components/responses/CompanyNotFound'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /auth/inn-login:
+    post:
+      tags: [auth]
+      operationId: innLogin
+      summary: Вход по ИНН; при первом входе создаётся компания и генерируются демо-данные банка (REG-07)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [inn]
+              properties:
+                inn: {$ref: '../schemas/domain.schema.json#/$defs/Inn'}
+      responses:
+        '200':
+          description: Вход выполнен, установлена cookie `session`
+          headers:
+            Set-Cookie: {schema: {type: string}, description: 'session=<JWT>; HttpOnly; Secure; SameSite=Lax; Path=/'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Session'}
+        '422': {$ref: '#/components/responses/InnInvalid'}
+        '404': {$ref: '#/components/responses/CompanyNotFound'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /demo/companies:
+    get:
+      tags: [auth]
+      operationId: listDemoCompanies
+      summary: Демо-компании DC-1…DC-5 (REG-04)
+      security: []
+      responses:
+        '200':
+          description: Список
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/DemoCompany'}
+  /auth/demo-login:
+    post:
+      tags: [auth]
+      operationId: demoLogin
+      summary: Вход под демо-компанией (REG-04)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code]
+              properties:
+                code: {type: string, enum: [DC-1, DC-2, DC-3, DC-4, DC-5]}
+      responses:
+        '200':
+          description: Вход выполнен
+          headers:
+            Set-Cookie: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Session'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /auth/staff-login:
+    post:
+      tags: [auth]
+      operationId: staffLogin
+      summary: Вход андеррайтера
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [login, password]
+              properties:
+                login: {type: string, minLength: 1}
+                password: {type: string, minLength: 1, format: password}
+      responses:
+        '200':
+          description: Вход выполнен
+          headers:
+            Set-Cookie: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Session'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /auth/me:
+    get:
+      tags: [auth]
+      operationId: getMe
+      summary: Текущая сессия и CSRF-токен
+      responses:
+        '200':
+          description: Сессия
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Session'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Выход
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      responses:
+        '204': {description: Сессия завершена}
+
+  # ---------------- профиль и каталог ----------------
+  /profile:
+    get:
+      tags: [profile]
+      operationId: getProfile
+      summary: Профиль компании с источником и датой каждого поля (REG-08, PRF-01…PRF-10)
+      responses:
+        '200':
+          description: Профиль
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Profile'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /products:
+    get:
+      tags: [catalog]
+      operationId: listProducts
+      summary: Каталог из 6 продуктов (CAT-01)
+      responses:
+        '200':
+          description: Каталог
+          content:
+            application/json:
+              schema:
+                type: array
+                minItems: 6
+                maxItems: 6
+                items: {$ref: '../schemas/domain.schema.json#/$defs/Product'}
+  /dictionaries/reason-codes:
+    get:
+      tags: [catalog]
+      operationId: listReasonCodes
+      summary: Справочник reason codes с текстами для клиента (ТЗ 5.4)
+      responses:
+        '200':
+          description: Справочник
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '../schemas/domain.schema.json#/$defs/ReasonCodeEntry'}
+
+  # ---------------- потребность ----------------
+  /needs:
+    post:
+      tags: [needs]
+      operationId: createNeed
+      summary: Создать потребность из текста или формы (NEED-01…NEED-03, NEED-07)
+      description: |
+        Ровно одно из полей `text` или `fields`. Ответ сообщает, что дальше:
+        `QUESTION` — показать вопрос; `READY` — вызвать `POST /recommendations`; `NON_TARGET` — показать шаблон NEED-07.
+        При недоступной LLM запрос с `text` возвращает 503 LLM_UNAVAILABLE; интерфейс переключается на форму (NFR-09).
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required: [text]
+                  properties:
+                    text: {type: string, minLength: 1, maxLength: 2000}
+                - type: object
+                  additionalProperties: false
+                  required: [fields]
+                  properties:
+                    fields: {$ref: '../schemas/domain.schema.json#/$defs/NeedFieldsInput'}
+      responses:
+        '201':
+          description: Потребность создана
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/NeedResult'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '503': {$ref: '#/components/responses/LlmUnavailable'}
+  /needs/{need_id}:
+    parameters:
+      - $ref: '#/components/parameters/NeedId'
+    get:
+      tags: [needs]
+      operationId: getNeed
+      summary: Потребность
+      responses:
+        '200':
+          description: Потребность
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Need'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [needs]
+      operationId: updateNeed
+      summary: Ответ на вопрос или правка полей в карточке (NEED-04, NEED-05)
+      description: Ровно одно из `answer` или `fields`. Правка увеличивает `version`; если подбор уже был, интерфейс вызывает `POST /recommendations` повторно (REC-10).
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required: [answer]
+                  properties:
+                    answer:
+                      type: object
+                      additionalProperties: false
+                      required: [question_id, value]
+                      properties:
+                        question_id: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+                        value: {description: 'Значение из options[].value вопроса'}
+                - type: object
+                  additionalProperties: false
+                  required: [fields]
+                  properties:
+                    fields: {$ref: '../schemas/domain.schema.json#/$defs/NeedFieldsInput'}
+      responses:
+        '200':
+          description: Потребность обновлена
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/NeedResult'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+
+  # ---------------- подбор ----------------
+  /recommendations:
+    post:
+      tags: [recommendations]
+      operationId: createRecommendation
+      summary: Выполнить подбор по потребности (REC-01…REC-09)
+      description: Потребность должна быть в состоянии READY (поле goal известно). p95 ≤ 3 с (Q-08).
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [need_id]
+              properties:
+                need_id: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+      responses:
+        '201':
+          description: Снимок подбора
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Recommendation'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/StatusConflict'}
+  /recommendations/{recommendation_id}:
+    parameters:
+      - $ref: '#/components/parameters/RecommendationId'
+    get:
+      tags: [recommendations]
+      operationId: getRecommendation
+      summary: Снимок подбора — источник карточки и сравнения (REC-12, REC-13)
+      responses:
+        '200':
+          description: Снимок
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Recommendation'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /recommendations/{recommendation_id}/why-not/{product_code}:
+    get:
+      tags: [recommendations]
+      operationId: whyNot
+      summary: «Почему не X?» (REC-14)
+      parameters:
+        - $ref: '#/components/parameters/RecommendationId'
+        - name: product_code
+          in: path
+          required: true
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/ProductCode'}
+      responses:
+        '200':
+          description: Причина
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/WhyNot'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /recommendations/{recommendation_id}/what-if:
+    post:
+      tags: [what-if]
+      operationId: whatIfFromRecommendation
+      summary: Варианты «что сделать» от подбора — шанс средний или низкий, либо нет вариантов (WI-01…WI-04)
+      parameters:
+        - $ref: '#/components/parameters/RecommendationId'
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [product_code]
+              properties:
+                product_code:
+                  description: Продукт, от которого строятся изменения; при REC-15 — продукт с наибольшим значением матрицы «цель × продукт»
+                  $ref: '../schemas/domain.schema.json#/$defs/ProductCode'
+      responses:
+        '200':
+          description: До 3 вариантов
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/WhatIfResult'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '501': {$ref: '#/components/responses/FeatureDisabled'}
+  /what-if/evaluate:
+    post:
+      tags: [what-if]
+      operationId: evaluateWhatIf
+      summary: Пересчёт одной комбинации для ползунков (WI-05), p95 ≤ 100 мс
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [base, changes]
+              properties:
+                base:
+                  oneOf:
+                    - type: object
+                      additionalProperties: false
+                      required: [recommendation_id, product_code]
+                      properties:
+                        recommendation_id: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+                        product_code: {$ref: '../schemas/domain.schema.json#/$defs/ProductCode'}
+                    - type: object
+                      additionalProperties: false
+                      required: [application_id]
+                      properties:
+                        application_id: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+                changes: {$ref: '../schemas/domain.schema.json#/$defs/WhatIfChanges'}
+      responses:
+        '200':
+          description: Результат
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/WhatIfEvaluation'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '501': {$ref: '#/components/responses/FeatureDisabled'}
+
+  # ---------------- финансовый пульс ----------------
+  /cashflow/summary:
+    get:
+      tags: [cashflow]
+      operationId: getCashflowSummary
+      summary: «Финансовый пульс» (CF-01, CF-02)
+      responses:
+        '200':
+          description: Сводка
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/CashflowSummary'}
+        '501': {$ref: '#/components/responses/FeatureDisabled'}
+  /cashflow/forecast:
+    get:
+      tags: [cashflow]
+      operationId: getCashflowForecast
+      summary: Прогноз остатка (CF-03)
+      parameters:
+        - name: horizon
+          in: query
+          required: false
+          schema: {type: integer, enum: [30, 60, 90], default: 90}
+      responses:
+        '200':
+          description: Прогноз
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Forecast'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '501': {$ref: '#/components/responses/FeatureDisabled'}
+  /insights:
+    get:
+      tags: [cashflow]
+      operationId: listInsights
+      summary: Карточки разрыва со статусом NEW и OPENED (CF-06)
+      responses:
+        '200':
+          description: Список
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '../schemas/domain.schema.json#/$defs/Insight'}
+  /insights/{insight_id}/dismiss:
+    post:
+      tags: [cashflow]
+      operationId: dismissInsight
+      summary: Скрыть карточку
+      parameters:
+        - name: insight_id
+          in: path
+          required: true
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+        - $ref: '#/components/parameters/Csrf'
+      responses:
+        '204': {description: Скрыта}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  # ---------------- заявки ----------------
+  /applications:
+    get:
+      tags: [applications]
+      operationId: listApplications
+      summary: Заявки компании, последние версии
+      responses:
+        '200':
+          description: Список
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '../schemas/domain.schema.json#/$defs/Application'}
+    post:
+      tags: [applications]
+      operationId: createApplication
+      summary: Черновик из рекомендации по кнопке «Оформить» (REC-16, APP-01)
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [recommendation_id, product_code]
+              properties:
+                recommendation_id: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+                product_code:
+                  description: Лучший вариант или альтернатива из снимка
+                  $ref: '../schemas/domain.schema.json#/$defs/ProductCode'
+      responses:
+        '201':
+          description: Черновик создан
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Application'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/IdempotencyConflict'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /applications/{application_id}:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    get:
+      tags: [applications]
+      operationId: getApplication
+      summary: Заявка со статусом и следующим шагом (APP-05)
+      responses:
+        '200':
+          description: Заявка
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Application'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [applications]
+      operationId: updateApplication
+      summary: Изменение черновика с автосохранением (APP-02, APP-08)
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '../schemas/domain.schema.json#/$defs/ApplicationPatch'}
+      responses:
+        '200':
+          description: Сохранено
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Application'}
+        '409': {$ref: '#/components/responses/StatusConflict'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /applications/{application_id}/versions:
+    post:
+      tags: [what-if]
+      operationId: applyWhatIf
+      summary: Применить вариант «что сделать» — новая версия заявки в статусе DRAFT (WI-07)
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [what_if_option_id]
+              properties:
+                what_if_option_id: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+      responses:
+        '201':
+          description: Новая версия
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Application'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/StatusConflict'}
+  /recommendations/{recommendation_id}/applications:
+    post:
+      tags: [what-if]
+      operationId: applyWhatIfFromRecommendation
+      summary: Применить вариант «что сделать», полученный от подбора — новый черновик (WI-07)
+      parameters:
+        - $ref: '#/components/parameters/RecommendationId'
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [what_if_option_id]
+              properties:
+                what_if_option_id: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+      responses:
+        '201':
+          description: Черновик
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Application'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /applications/{application_id}/what-if:
+    post:
+      tags: [what-if]
+      operationId: whatIfFromApplication
+      summary: Варианты «что сделать» после решения «отказ» или «одобрено на меньшую сумму» (WI-01…WI-04)
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - $ref: '#/components/parameters/Csrf'
+      responses:
+        '200':
+          description: До 3 вариантов
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/WhatIfResult'}
+        '409': {$ref: '#/components/responses/StatusConflict'}
+        '501': {$ref: '#/components/responses/FeatureDisabled'}
+  /applications/{application_id}/checklist:
+    get:
+      tags: [applications]
+      operationId: getChecklist
+      summary: Чек-лист документов (CAT-04, APP-03)
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Чек-лист
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '../schemas/domain.schema.json#/$defs/ChecklistItem'}
+  /applications/{application_id}/consent/request:
+    post:
+      tags: [applications]
+      operationId: requestConsentCode
+      summary: Получить 6-значный код согласия — имитация SMS, код показывается в интерфейсе (APP-03)
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - $ref: '#/components/parameters/Csrf'
+      responses:
+        '200':
+          description: Код выдан; действует 5 минут
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [demo_code, expires_at]
+                properties:
+                  demo_code: {type: string, pattern: '^[0-9]{6}$'}
+                  expires_at: {$ref: '../schemas/domain.schema.json#/$defs/DateTime'}
+  /applications/{application_id}/consent/confirm:
+    post:
+      tags: [applications]
+      operationId: confirmConsent
+      summary: Подтвердить согласие кодом (APP-03)
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code]
+              properties:
+                code: {type: string, pattern: '^[0-9]{6}$'}
+      responses:
+        '200':
+          description: Согласие дано
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Consent'}
+        '422':
+          description: Неверный или просроченный код — CONSENT_CODE_INVALID
+          content:
+            application/problem+json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+  /applications/{application_id}/submit:
+    post:
+      tags: [applications]
+      operationId: submitApplication
+      summary: Подать заявку (APP-03); решение придёт событием application.status (SC-08 ≤ 60 с)
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Заявка подана
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Application'}
+        '409':
+          description: STATUS_CONFLICT — заявка не в DRAFT; IDEMPOTENCY_CONFLICT
+          content:
+            application/problem+json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+        '422':
+          description: CHECKLIST_INCOMPLETE — нет обязательных документов; CONSENT_REQUIRED — нет согласия; VALIDATION_ERROR — поля
+          content:
+            application/problem+json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+  /applications/{application_id}/accept:
+    post:
+      tags: [applications]
+      operationId: acceptConditions
+      summary: «Принять условия» (APP-07) — статус ACCEPTED
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - $ref: '#/components/parameters/Csrf'
+      responses:
+        '200':
+          description: Условия приняты
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Application'}
+        '409': {$ref: '#/components/responses/StatusConflict'}
+  /applications/{application_id}/decision:
+    get:
+      tags: [applications]
+      operationId: getClientDecision
+      summary: Решение для клиента без PD и SHAP (APP-06)
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Решение
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/ClientDecisionView'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  # ---------------- документы ----------------
+  /applications/{application_id}/documents:
+    post:
+      tags: [documents]
+      operationId: uploadDocument
+      summary: Загрузить файл по чек-листу (DOC-01); проверка и распознавание — асинхронно
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, type]
+              properties:
+                file: {type: string, format: binary, description: 'PDF, JPG, PNG или XLSX до 10 МБ'}
+                type: {$ref: '../schemas/domain.schema.json#/$defs/DocumentType'}
+      responses:
+        '202':
+          description: Принят в обработку, статус UPLOADED
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Document'}
+        '413':
+          description: FILE_TOO_LARGE
+          content:
+            application/problem+json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+        '415':
+          description: FILE_TYPE_NOT_ALLOWED — по расширению; проверка по содержимому — асинхронно
+          content:
+            application/problem+json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+        '409': {$ref: '#/components/responses/StatusConflict'}
+  /documents/{document_id}:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      tags: [documents]
+      operationId: getDocument
+      summary: Документ со статусом и распознанными полями (DOC-02, DOC-06)
+      responses:
+        '200':
+          description: Документ
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Document'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    delete:
+      tags: [documents]
+      operationId: deleteDocument
+      summary: Удалить документ черновика, чтобы загрузить замену
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      responses:
+        '204': {description: Удалён}
+        '409': {$ref: '#/components/responses/StatusConflict'}
+  /documents/{document_id}/fields:
+    patch:
+      tags: [documents]
+      operationId: editDocumentFields
+      summary: Исправить распознанные поля (DOC-06); профиль и подбор пересчитываются
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [edits]
+              properties:
+                edits:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [path, value]
+                    properties:
+                      path: {type: string}
+                      value: {}
+      responses:
+        '200':
+          description: Документ с правками
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Document'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /documents/{document_id}/content:
+    get:
+      tags: [documents]
+      operationId: getDocumentContent
+      summary: Файл после очистки (для подсветки полей и андеррайтера)
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Файл
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  # ---------------- ассистент ----------------
+  /chat/sessions:
+    post:
+      tags: [assistant]
+      operationId: createChatSession
+      summary: Новый диалог; из карточки разрыва передаётся insight_id (AI-03)
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                insight_id: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+                recommendation_id: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+                application_id: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+      responses:
+        '201':
+          description: Диалог создан; первое сообщение ассистента уже в messages
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/ChatSession'}
+  /chat/sessions/{session_id}:
+    get:
+      tags: [assistant]
+      operationId: getChatSession
+      summary: Диалог с историей
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Диалог
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/ChatSession'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /chat/sessions/{session_id}/messages:
+    post:
+      tags: [assistant]
+      operationId: sendChatMessage
+      summary: Сообщение ассистенту; ответ — поток SSE (AI-02…AI-10)
+      description: |
+        Ответ — `text/event-stream`, схема событий — `contracts/sse/chat-events.schema.json`.
+        Первое событие — не позже 2 с (NFR-03); поток заканчивается событием `done` или `error`.
+        При отключённой LLM — 503 LLM_UNAVAILABLE до начала потока.
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [text]
+              properties:
+                text: {type: string, minLength: 1, maxLength: 2000}
+      responses:
+        '200':
+          description: Поток событий
+          content:
+            text/event-stream:
+              schema: {type: string, description: 'См. contracts/sse/chat-events.schema.json'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/LlmUnavailable'}
+  /chat/actions/{action_id}/confirm:
+    post:
+      tags: [assistant]
+      operationId: confirmAction
+      summary: Подтверждение действия кнопкой (РШ-5, AI-11)
+      parameters:
+        - name: action_id
+          in: path
+          required: true
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Действие выполнено
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [action, result]
+                properties:
+                  action: {$ref: '../schemas/domain.schema.json#/$defs/PendingAction'}
+                  result:
+                    description: CREATE_APPLICATION и APPLY_WHAT_IF — заявка; FILL_FIELD — заявка с заполненным полем
+                    $ref: '../schemas/domain.schema.json#/$defs/Application'
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: Действие уже выполнено или истекло — STATUS_CONFLICT
+          content:
+            application/problem+json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+  /escalations:
+    post:
+      tags: [assistant]
+      operationId: createEscalation
+      summary: «Связаться с сотрудником» (AI-01, AI-07)
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: {$ref: '../schemas/domain.schema.json#/$defs/EscalationReason'}
+                session_id: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+                application_id: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+                comment: {type: string, maxLength: 1000}
+      responses:
+        '201':
+          description: Обращение в очереди андеррайтера
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Escalation'}
+
+  # ---------------- поток событий ----------------
+  /events/stream:
+    get:
+      tags: [events]
+      operationId: eventStream
+      summary: Поток событий для интерфейса (APP-05, CF-06, DOC-02, REC-10)
+      description: '`text/event-stream`; схема — `contracts/sse/stream-events.schema.json`. Событие ping раз в 15 с. При переподключении с заголовком Last-Event-ID сервер повторяет события за последние 5 мин.'
+      responses:
+        '200':
+          description: Поток
+          content:
+            text/event-stream:
+              schema: {type: string}
+
+  # ---------------- андеррайтер ----------------
+  /uw/queue:
+    get:
+      tags: [underwriter]
+      operationId: getUwQueue
+      summary: Очередь — заявки MANUAL_REVIEW и открытые обращения, от старых к новым (UW-01)
+      security:
+        - session: [UNDERWRITER]
+      responses:
+        '200':
+          description: Очередь
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '../schemas/domain.schema.json#/$defs/UwQueueItem'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /uw/applications/{application_id}:
+    get:
+      tags: [underwriter]
+      operationId: getUwCard
+      summary: Карточка заявки (UW-02, UW-03)
+      security:
+        - session: [UNDERWRITER]
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Карточка
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/UwCard'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /uw/applications/{application_id}/decision:
+    post:
+      tags: [underwriter]
+      operationId: uwDecide
+      summary: Решение с обязательным комментарием (UW-04)
+      security:
+        - session: [UNDERWRITER]
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision, comment]
+              properties:
+                decision: {type: string, enum: [APPROVE, DECLINE]}
+                comment: {type: string, minLength: 1, maxLength: 2000}
+      responses:
+        '200':
+          description: Решение сохранено в снимке
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Decision'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/StatusConflict'}
+  /uw/escalations/{escalation_id}/close:
+    post:
+      tags: [underwriter]
+      operationId: closeEscalation
+      summary: Закрыть обращение
+      security:
+        - session: [UNDERWRITER]
+      parameters:
+        - name: escalation_id
+          in: path
+          required: true
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [comment]
+              properties:
+                comment: {type: string, minLength: 1, maxLength: 2000}
+      responses:
+        '200':
+          description: Закрыто
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Escalation'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: session
+      description: JWT в httpOnly-cookie; роль CLIENT или UNDERWRITER
+  parameters:
+    InnPath:
+      name: inn
+      in: path
+      required: true
+      schema: {type: string, description: 'Строка любого вида; проверка формата и контрольной суммы — в обработчике (ответ 422 INN_INVALID)'}
+    NeedId:
+      name: need_id
+      in: path
+      required: true
+      schema: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+    RecommendationId:
+      name: recommendation_id
+      in: path
+      required: true
+      schema: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+    ApplicationId:
+      name: application_id
+      in: path
+      required: true
+      schema: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+    DocumentId:
+      name: document_id
+      in: path
+      required: true
+      schema: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      schema: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+    Csrf:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      schema: {type: string}
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: UUID, создаёт клиент на каждое действие пользователя. Сервер хранит ключ и первый ответ 24 ч
+      schema: {type: string, format: uuid}
+  schemas:
+    Session:
+      type: object
+      additionalProperties: false
+      required: [role, csrf_token, expires_at, company]
+      properties:
+        role: {$ref: '../schemas/domain.schema.json#/$defs/Role'}
+        csrf_token: {type: string}
+        expires_at: {$ref: '../schemas/domain.schema.json#/$defs/DateTime'}
+        company:
+          description: Для андеррайтера — null
+          anyOf:
+            - $ref: '../schemas/domain.schema.json#/$defs/CompanyPreview'
+            - type: 'null'
+    DemoCompany:
+      type: object
+      additionalProperties: false
+      required: [code, inn, name, opf, description, scenario]
+      properties:
+        code: {type: string, enum: [DC-1, DC-2, DC-3, DC-4, DC-5]}
+        inn: {$ref: '../schemas/domain.schema.json#/$defs/Inn'}
+        name: {type: string}
+        opf: {$ref: '../schemas/domain.schema.json#/$defs/Opf'}
+        description: {type: string}
+        scenario: {type: string, enum: [DEMO-1, DEMO-2, DEMO-3, DEMO-4, DEMO-5]}
+  responses:
+    InnInvalid:
+      description: INN_INVALID — ИНН указан неверно (REG-03)
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+    CompanyNotFound:
+      description: COMPANY_NOT_FOUND — компания не найдена в реестре (REG-03)
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+    Unauthorized:
+      description: UNAUTHORIZED — нет сессии
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+    Forbidden:
+      description: FORBIDDEN — нет роли или чужая компания (NFR-13)
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+    NotFound:
+      description: NOT_FOUND — объекта нет или он принадлежит другой компании
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+    ValidationError:
+      description: VALIDATION_ERROR — ошибки полей в errors[]
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+    StatusConflict:
+      description: STATUS_CONFLICT — действие недоступно в текущем статусе
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+    IdempotencyConflict:
+      description: IDEMPOTENCY_CONFLICT — тот же Idempotency-Key с другим телом
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+    RateLimited:
+      description: RATE_LIMITED — превышен лимит; заголовок Retry-After
+      headers:
+        Retry-After: {schema: {type: integer}}
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+    LlmUnavailable:
+      description: LLM_UNAVAILABLE — LLM отключена или недоступна; интерфейс переходит на форму (NFR-09)
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+    FeatureDisabled:
+      description: FEATURE_DISABLED — расширение (S1, S2, S3) не включено в сборке
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}

@@ -1,0 +1,55 @@
+{
+  "event_id": "fbf4e99a-4bfd-5379-a6fa-3f7bb9ee9912",
+  "type": "document.parsed",
+  "source": "doc-service",
+  "time": "2026-10-14T09:00:00+07:00",
+  "subject": "7bb3e44c-ae48-5fcc-8623-d35b05153c68",
+  "schema_version": "1.0.0",
+  "correlation_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "data": {
+    "document_id": "fe86a2f9-df65-5499-b262-d471e0520373",
+    "application_id": "7bb3e44c-ae48-5fcc-8623-d35b05153c68",
+    "inn": "7707083893",
+    "document_type": "D1_OTHER_BANK_STATEMENT",
+    "status": "PARSED",
+    "accepted": true,
+    "reject_reason": null,
+    "clean_object_key": "documents/clean/fe86a2f9-df65-5499-b262-d471e0520373.pdf",
+    "result": {
+      "doc_kind": "BANK_STATEMENT",
+      "bank_name": "Банк Пример",
+      "bic": "044525000",
+      "account": "40702810900000000001",
+      "owner_inn": "7707083893",
+      "period_from": "2026-04-01",
+      "period_to": "2026-09-30",
+      "opening_balance": 310000.0,
+      "closing_balance": 455000.0,
+      "transactions": [
+        {
+          "date": "2026-04-03",
+          "amount": 145000.0,
+          "direction": "IN",
+          "counterparty": "ООО Покупатель",
+          "counterparty_inn": "7701234567",
+          "purpose": "Оплата по счёту 15",
+          "category": "CUSTOMER_INFLOW",
+          "category_confidence": 0.97
+        }
+      ],
+      "checks": {
+        "balance_ok": true,
+        "inn_match": true,
+        "period_months": 6,
+        "period_ok": true
+      },
+      "field_confidence": {
+        "owner_inn": 0.99,
+        "closing_balance": 0.98
+      },
+      "page_count": 7,
+      "used_ocr": false
+    },
+    "latency_ms": 12400
+  }
+}

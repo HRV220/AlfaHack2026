@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.smart-credit.local/events/recommendation.made.schema.json",
+  "title": "data события recommendation.made",
+  "description": "core-api → аналитика. Сохранён снимок подбора (метрики Q и воронка).",
+  "type": "object",
+  "properties": {
+    "recommendation_id": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+    },
+    "inn": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Inn"
+    },
+    "need_id": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+    },
+    "trigger": {
+      "$ref": "../schemas/domain.schema.json#/$defs/RecommendationTrigger"
+    },
+    "best_product_code": {
+      "anyOf": [
+        {
+          "$ref": "../schemas/domain.schema.json#/$defs/ProductCode"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "best_chance": {
+      "anyOf": [
+        {
+          "$ref": "../schemas/domain.schema.json#/$defs/Chance"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "alternative_product_codes": {
+      "type": "array",
+      "items": {
+        "$ref": "../schemas/domain.schema.json#/$defs/ProductCode"
+      },
+      "maxItems": 2
+    },
+    "questions_asked": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5
+    },
+    "latency_ms": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "recommendation_id",
+    "inn",
+    "need_id",
+    "trigger",
+    "best_product_code",
+    "best_chance",
+    "alternative_product_codes",
+    "questions_asked",
+    "latency_ms"
+  ],
+  "additionalProperties": false
+}

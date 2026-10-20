@@ -1,0 +1,70 @@
+{
+  "application_id": "7bb3e44c-ae48-5fcc-8623-d35b05153c68",
+  "application_version": 1,
+  "inn": "7707083893",
+  "outcome": "APPROVED",
+  "stop_reason": null,
+  "pd_raw": 0.021,
+  "pd": 0.016,
+  "grade": "A",
+  "amount_requested": 2000000.0,
+  "amount_approved": 2000000.0,
+  "rate": 0.18,
+  "term_months": 5,
+  "payment": 418178.65,
+  "reason_codes": [],
+  "shap_top10": [
+    {
+      "feature": "debt_load",
+      "value": 0.023,
+      "shap": 0.11,
+      "reason_code": "HIGH_DEBT_LOAD"
+    },
+    {
+      "feature": "inflow_volatility",
+      "value": 0.22,
+      "shap": 0.05,
+      "reason_code": "VOLATILE_TURNOVER"
+    },
+    {
+      "feature": "amount_to_inflow",
+      "value": 0.571,
+      "shap": 0.04,
+      "reason_code": "AMOUNT_HIGH_FOR_TURNOVER"
+    }
+  ],
+  "features": [
+    {
+      "name": "inflow_avg_m6",
+      "value": 3500000.0,
+      "source": "BANK_DEMO"
+    },
+    {
+      "name": "business_age_months",
+      "value": 61,
+      "source": "EGRUL"
+    },
+    {
+      "name": "debt_load",
+      "value": 0.023,
+      "source": "BANK_DEMO"
+    }
+  ],
+  "review_triggers": [],
+  "recommendation_id": "6401356b-3290-5847-9dc7-3103118775a2",
+  "versions": {
+    "catalog": "1.0.0",
+    "goal_fit": "1.0.0",
+    "grades": "1.0.0",
+    "weights": "1.0.0",
+    "checklist": "1.0.0",
+    "reason_codes": "1.0.0",
+    "pd_model": "1.0.0",
+    "feature_builder": "1.0.0",
+    "extraction_prompt": "1.0.0"
+  },
+  "decided_at": "2026-10-14T09:03:05+07:00",
+  "id": "1a1c6295-5b58-5ce1-83fa-c8888906504a",
+  "final_outcome": "APPROVED",
+  "underwriter": null
+}

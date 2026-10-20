@@ -1,0 +1,4395 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.smart-credit.local/schemas/domain.schema.json",
+  "title": "Доменные схемы «Умного кредитного кабинета»",
+  "description": "Общие схемы для OpenAPI и событий. Источник требований — ТЗ 4.1. Версия контрактов 1.0.0.",
+  "$defs": {
+    "Uuid": {
+      "type": "string",
+      "description": "Идентификатор UUID v4",
+      "format": "uuid"
+    },
+    "Inn": {
+      "type": "string",
+      "description": "ИНН: 10 цифр — юрлицо, 12 — ИП",
+      "pattern": "^([0-9]{10}|[0-9]{12})$"
+    },
+    "Money": {
+      "type": "number",
+      "description": "Сумма в рублях; округление до копеек (2 знака) выполняет отправитель",
+      "minimum": 0
+    },
+    "SignedMoney": {
+      "type": "number",
+      "description": "Сумма в рублях со знаком (остаток может быть отрицательным); 2 знака после запятой"
+    },
+    "Rate": {
+      "type": "number",
+      "description": "Годовая ставка долей: 0.18 = 18%",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "Probability": {
+      "type": "number",
+      "description": "Вероятность от 0 до 1",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "DateTime": {
+      "type": "string",
+      "description": "Дата и время ISO 8601 с часовым поясом",
+      "format": "date-time"
+    },
+    "Date": {
+      "type": "string",
+      "description": "Дата ISO 8601",
+      "format": "date"
+    },
+    "Month": {
+      "type": "string",
+      "description": "Месяц YYYY-MM",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+    },
+    "Version": {
+      "type": "string",
+      "description": "Версия артефакта: конфигурации, модели, промпта",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "Opf": {
+      "type": "string",
+      "enum": [
+        "IP",
+        "LLC"
+      ],
+      "description": "ОПФ: IP — индивидуальный предприниматель, LLC — ООО (PRF-01)"
+    },
+    "IndustryGroup": {
+      "type": "string",
+      "enum": [
+        "G01",
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "G07",
+        "G08",
+        "G09",
+        "G10",
+        "G11",
+        "G12"
+      ],
+      "description": "Отраслевая группа по таблице «ОКВЭД → группа» (ТЗ, раздел 7)"
+    },
+    "RegistryStatus": {
+      "type": "string",
+      "enum": [
+        "ACTIVE",
+        "LIQUIDATING",
+        "LIQUIDATED",
+        "BANKRUPT",
+        "REORGANIZING"
+      ],
+      "description": "Статус по реестру: действующая, ликвидируется, ликвидирована, банкротство, реорганизация (PRF-04)"
+    },
+    "RegistryOrigin": {
+      "type": "string",
+      "enum": [
+        "DADATA",
+        "FIXTURE",
+        "SYNTHETIC"
+      ],
+      "description": "Откуда реквизиты (REG-06): DADATA — ответ DaData (в том числе из кэша), FIXTURE — сохранённый ответ из репозитория, SYNTHETIC — реестр недоступен"
+    },
+    "FieldSource": {
+      "type": "string",
+      "enum": [
+        "EGRUL",
+        "BANK_DEMO",
+        "DOCUMENT",
+        "FORECAST",
+        "CLIENT",
+        "DEFAULT",
+        "SYSTEM"
+      ],
+      "description": "Источник значения (REG-08): EGRUL — реестр; BANK_DEMO — демо-данные банка; DOCUMENT — распознанный документ; FORECAST — прогноз; CLIENT — ввод клиента; DEFAULT — значение по умолчанию (допущение); SYSTEM — расчёт системы"
+    },
+    "Goal": {
+      "type": "string",
+      "enum": [
+        "CASH_GAP",
+        "PURCHASE",
+        "SEASONAL",
+        "EQUIPMENT",
+        "RENOVATION",
+        "CONTRACT",
+        "OTHER"
+      ],
+      "description": "Цель: кассовый разрыв; закупка товара или сырья; сезонная подготовка; оборудование и транспорт; ремонт и расширение; исполнение контракта; другая бизнес-цель"
+    },
+    "Urgency": {
+      "type": "string",
+      "enum": [
+        "TODAY_TOMORROW",
+        "WITHIN_WEEK",
+        "NOT_URGENT"
+      ],
+      "description": "Срочность: сегодня–завтра; в течение недели; не срочно"
+    },
+    "Priority": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "MIN_PAYMENT",
+        "MIN_OVERPAYMENT",
+        "SPEED",
+        "NO_COLLATERAL"
+      ],
+      "description": "Приоритет: не указан; минимальный платёж; минимальная переплата; скорость; без залога"
+    },
+    "Regularity": {
+      "type": "string",
+      "enum": [
+        "ONE_TIME",
+        "RECURRING"
+      ],
+      "description": "Регулярность: разовая; повторяющаяся"
+    },
+    "CollateralKind": {
+      "type": "string",
+      "enum": [
+        "EQUIPMENT",
+        "VEHICLE",
+        "REAL_ESTATE",
+        "GUARANTOR"
+      ],
+      "description": "Вид обеспечения: оборудование, транспорт, недвижимость, поручитель. Пустой список обеспечения = «нет»"
+    },
+    "ProductCode": {
+      "type": "string",
+      "enum": [
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+        "P5",
+        "P6"
+      ],
+      "description": "Продукт: P1 овердрафт, P2 оборотный кредит, P3 кредитная линия, P4 кредит на развитие, P5 кредит под залог, P6 льготный кредит"
+    },
+    "EligibilityStatus": {
+      "type": "string",
+      "enum": [
+        "ADMITTED",
+        "ADMITTED_ADJUSTED",
+        "REJECTED"
+      ],
+      "description": "Допуск (REC-01): допущен; допущен с корректировкой; не допущен"
+    },
+    "Adjustment": {
+      "type": "string",
+      "enum": [
+        "AMOUNT_TO_PRODUCT_MAX",
+        "AMOUNT_TO_PRODUCT_MIN",
+        "TERM_TO_PRODUCT_BOUNDS",
+        "GUARANTOR_REQUIRED"
+      ],
+      "description": "Корректировка при допуске: сумма приведена к максимуму или минимуму продукта; срок приведён к границам; потребуется поручитель"
+    },
+    "Chance": {
+      "type": "string",
+      "enum": [
+        "HIGH",
+        "MEDIUM",
+        "LOW"
+      ],
+      "description": "Шанс одобрения по REC-03"
+    },
+    "Grade": {
+      "type": "string",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "description": "Грейд: A < 2%, B 2–5%, C 5–12%, D ≥ 12%"
+    },
+    "Factor": {
+      "type": "string",
+      "enum": [
+        "F1",
+        "F2",
+        "F3",
+        "F4",
+        "F5",
+        "F6"
+      ],
+      "description": "Фактор ранжирования (REC-06): F1 соответствие цели, F2 покрытие, F3 комфорт платежа, F4 стоимость, F5 шанс, F6 приоритет"
+    },
+    "ReasonCode": {
+      "type": "string",
+      "enum": [
+        "STOP_REGISTRY",
+        "STOP_FRAUD",
+        "STOP_OVERDUE",
+        "STOP_YOUNG",
+        "GOAL_MISMATCH",
+        "AGE_BELOW_MIN",
+        "INFLOW_BELOW_MIN",
+        "INFLOW_HISTORY_SHORT",
+        "INDUSTRY_NOT_IN_PROGRAM",
+        "COLLATERAL_REQUIRED",
+        "AMOUNT_BELOW_MIN",
+        "CAPACITY_BELOW_MIN",
+        "LOW_TURNOVER",
+        "VOLATILE_TURNOVER",
+        "FALLING_TURNOVER",
+        "HIGH_DEBT_LOAD",
+        "PAST_OVERDUE",
+        "LOW_CASH_RESERVE",
+        "CUSTOMER_CONCENTRATION",
+        "YOUNG_BUSINESS",
+        "AMOUNT_HIGH_FOR_TURNOVER",
+        "AMOUNT_ABOVE_LIMIT",
+        "STATEMENT_NOT_VERIFIED",
+        "INN_MISMATCH"
+      ],
+      "description": "Код причины из справочника ТЗ, раздел 5.4"
+    },
+    "ReasonGroup": {
+      "type": "string",
+      "enum": [
+        "STOP",
+        "ELIGIBILITY",
+        "PD_FACTOR",
+        "LIMIT",
+        "DOCUMENT"
+      ],
+      "description": "Группа кода причины"
+    },
+    "ApplicationStatus": {
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "SUBMITTED",
+        "DOCUMENTS_PARSING",
+        "CHECKING",
+        "MANUAL_REVIEW",
+        "APPROVED",
+        "APPROVED_REDUCED",
+        "DECLINED",
+        "ACCEPTED"
+      ],
+      "description": "Статус заявки (ТЗ, раздел 6): черновик, подана, документы распознаются, проверка, доп. проверка, одобрено, одобрено на меньшую сумму, отказ, условия приняты"
+    },
+    "DecisionOutcome": {
+      "type": "string",
+      "enum": [
+        "APPROVED",
+        "APPROVED_REDUCED",
+        "MANUAL_REVIEW",
+        "DECLINED"
+      ],
+      "description": "Итог скоринга (SC-04)"
+    },
+    "DocumentType": {
+      "type": "string",
+      "enum": [
+        "D1_OTHER_BANK_STATEMENT",
+        "D2_GUARANTOR_FORM",
+        "D3_FINANCIAL_STATEMENTS",
+        "D4_ESTIMATE_OR_INVOICE",
+        "D5_COLLATERAL_DOCS"
+      ],
+      "description": "Тип документа по чек-листу (ТЗ, раздел 4.3)"
+    },
+    "DocumentStatus": {
+      "type": "string",
+      "enum": [
+        "UPLOADED",
+        "CHECKING",
+        "ACCEPTED",
+        "PARSED",
+        "REPLACE_REQUIRED"
+      ],
+      "description": "Статус документа (DOC-02): загружен, проверяется, принят (проверка файла пройдена, распознавание не требуется), распознан, требует замены"
+    },
+    "DocumentRejectReason": {
+      "type": "string",
+      "enum": [
+        "TYPE_NOT_ALLOWED",
+        "TOO_LARGE",
+        "INFECTED",
+        "MACRO",
+        "UNREADABLE",
+        "INN_MISMATCH",
+        "BALANCE_MISMATCH",
+        "PERIOD_TOO_SHORT"
+      ],
+      "description": "Причина «требует замены»: недопустимый тип, больше 10 МБ, вирус, макрос, не распознан, чужой ИНН, остатки не сходятся, период < 6 мес."
+    },
+    "TxCategory": {
+      "type": "string",
+      "enum": [
+        "CUSTOMER_INFLOW",
+        "SUPPLIER_PAYMENT",
+        "TAXES",
+        "SALARY",
+        "RENT",
+        "LOAN_PAYMENT",
+        "LOAN_RECEIVED",
+        "OWN_TRANSFER",
+        "UNDEFINED"
+      ],
+      "description": "Категория операции (DOC-05)"
+    },
+    "Direction": {
+      "type": "string",
+      "enum": [
+        "IN",
+        "OUT"
+      ],
+      "description": "Направление операции: зачисление или списание"
+    },
+    "Role": {
+      "type": "string",
+      "enum": [
+        "CLIENT",
+        "UNDERWRITER"
+      ],
+      "description": "Роль пользователя"
+    },
+    "ChatStage": {
+      "type": "string",
+      "enum": [
+        "NEED",
+        "RECOMMENDATION",
+        "APPLICATION",
+        "WAITING_DECISION",
+        "EXPLANATION"
+      ],
+      "description": "Стадия диалога (архитектура 7.4)"
+    },
+    "ActionType": {
+      "type": "string",
+      "enum": [
+        "CREATE_APPLICATION",
+        "FILL_FIELD",
+        "APPLY_WHAT_IF"
+      ],
+      "description": "Действие, которое ассистент предлагает и клиент подтверждает кнопкой (РШ-5)"
+    },
+    "EscalationReason": {
+      "type": "string",
+      "enum": [
+        "USER_REQUEST",
+        "COMPLAINT",
+        "NO_DATA",
+        "NON_TARGET",
+        "NO_OPTIONS"
+      ],
+      "description": "Причина обращения (AI-07, NEED-07, REC-15)"
+    },
+    "NeedField": {
+      "type": "string",
+      "enum": [
+        "goal",
+        "amount",
+        "term_months",
+        "collateral",
+        "urgency",
+        "priority",
+        "regularity",
+        "comfortable_payment"
+      ],
+      "description": "Поле потребности (ТЗ 4.2), порядок = порядок вопросов при равенстве"
+    },
+    "NeedOrigin": {
+      "type": "string",
+      "enum": [
+        "TEXT",
+        "FORM",
+        "FORECAST"
+      ],
+      "description": "Откуда потребность: текст клиента, структурированная форма, прогноз разрыва"
+    },
+    "NeedNext": {
+      "type": "string",
+      "enum": [
+        "QUESTION",
+        "READY",
+        "NON_TARGET"
+      ],
+      "description": "Что дальше после обработки потребности"
+    },
+    "RecommendationTrigger": {
+      "type": "string",
+      "enum": [
+        "CLIENT",
+        "FORECAST",
+        "PROFILE_UPDATED",
+        "NEED_EDITED"
+      ],
+      "description": "Почему выполнен подбор"
+    },
+    "ErrorCode": {
+      "type": "string",
+      "enum": [
+        "INN_INVALID",
+        "COMPANY_NOT_FOUND",
+        "UNAUTHORIZED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "VALIDATION_ERROR",
+        "STATUS_CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "CHECKLIST_INCOMPLETE",
+        "CONSENT_REQUIRED",
+        "CONSENT_CODE_INVALID",
+        "FILE_TYPE_NOT_ALLOWED",
+        "FILE_TOO_LARGE",
+        "FILE_INFECTED",
+        "FILE_MACRO",
+        "RATE_LIMITED",
+        "LLM_UNAVAILABLE",
+        "FEATURE_DISABLED",
+        "INTERNAL"
+      ],
+      "description": "Машинный код ошибки"
+    },
+    "Problem": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "URI типа ошибки: https://errors.smart-credit.local/<code>",
+          "format": "uri"
+        },
+        "title": {
+          "type": "string",
+          "description": "Краткое описание для разработчика"
+        },
+        "status": {
+          "type": "integer",
+          "description": "HTTP-статус",
+          "minimum": 400,
+          "maximum": 599
+        },
+        "detail": {
+          "type": "string",
+          "description": "Текст для показа пользователю на русском"
+        },
+        "instance": {
+          "type": "string",
+          "description": "Путь запроса"
+        },
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "type": "string",
+                "description": "Путь поля, например term_months"
+              },
+              "message": {
+                "type": "string",
+                "description": "Текст ошибки"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "field",
+              "message"
+            ]
+          },
+          "description": "Ошибки полей для VALIDATION_ERROR"
+        },
+        "correlation_id": {
+          "type": "string",
+          "description": "Идентификатор трассы",
+          "pattern": "^[0-9a-f]{32}$"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "title",
+        "status",
+        "code",
+        "correlation_id"
+      ],
+      "description": "Ошибка в формате RFC 9457 (application/problem+json)"
+    },
+    "CompanyPreview": {
+      "type": "object",
+      "properties": {
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "name": {
+          "type": "string",
+          "description": "Краткое наименование с ОПФ"
+        },
+        "opf": {
+          "$ref": "#/$defs/Opf"
+        },
+        "registry_status": {
+          "$ref": "#/$defs/RegistryStatus"
+        },
+        "address": {
+          "type": "string",
+          "description": "Адрес одной строкой"
+        },
+        "origin": {
+          "$ref": "#/$defs/RegistryOrigin"
+        },
+        "fetched_at": {
+          "$ref": "#/$defs/DateTime"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "inn",
+        "name",
+        "opf",
+        "registry_status",
+        "address",
+        "origin",
+        "fetched_at"
+      ],
+      "description": "Предпросмотр компании перед входом (REG-02)"
+    },
+    "RegistryData": {
+      "type": "object",
+      "properties": {
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "kpp": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]{9}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ogrn": {
+          "type": "string",
+          "pattern": "^([0-9]{13}|[0-9]{15})$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "opf": {
+          "$ref": "#/$defs/Opf"
+        },
+        "manager_name": {
+          "type": "string",
+          "description": "Руководитель (ООО) или ФИО ИП"
+        },
+        "address": {
+          "type": "string"
+        },
+        "okved": {
+          "type": "string",
+          "description": "Основной ОКВЭД",
+          "pattern": "^[0-9]{2}(\\.[0-9]{1,2}){0,2}$"
+        },
+        "industry_group": {
+          "$ref": "#/$defs/IndustryGroup"
+        },
+        "registry_status": {
+          "$ref": "#/$defs/RegistryStatus"
+        },
+        "registered_at": {
+          "$ref": "#/$defs/Date"
+        },
+        "liquidated_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "origin": {
+          "$ref": "#/$defs/RegistryOrigin"
+        },
+        "fetched_at": {
+          "$ref": "#/$defs/DateTime"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "inn",
+        "kpp",
+        "ogrn",
+        "name",
+        "opf",
+        "manager_name",
+        "address",
+        "okved",
+        "industry_group",
+        "registry_status",
+        "registered_at",
+        "liquidated_at",
+        "origin",
+        "fetched_at"
+      ],
+      "description": "Реквизиты (REG-05)"
+    },
+    "SourceMark": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/FieldSource"
+        },
+        "as_of": {
+          "$ref": "#/$defs/DateTime"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "as_of"
+      ],
+      "description": "Источник и дата значения"
+    },
+    "InflowAverages": {
+      "type": "object",
+      "properties": {
+        "m3": {
+          "$ref": "#/$defs/Money"
+        },
+        "m6": {
+          "$ref": "#/$defs/Money"
+        },
+        "m12": {
+          "$ref": "#/$defs/Money"
+        },
+        "bank_m6": {
+          "$ref": "#/$defs/Money"
+        },
+        "other_banks_m6": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total_m6": {
+          "$ref": "#/$defs/Money"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "m3",
+        "m6",
+        "m12",
+        "bank_m6",
+        "other_banks_m6",
+        "total_m6"
+      ],
+      "description": "Средние поступления (PRF-05). m3/m6/m12 — по банку; total_m6 = bank_m6 + other_banks_m6"
+    },
+    "ProfileMetrics": {
+      "type": "object",
+      "properties": {
+        "business_age_months": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "inflow_avg": {
+          "$ref": "#/$defs/InflowAverages"
+        },
+        "seasonality": {
+          "type": "number",
+          "description": "PRF-06",
+          "minimum": 0
+        },
+        "volatility": {
+          "type": "number",
+          "description": "PRF-07",
+          "minimum": 0
+        },
+        "free_cash_flow_m6": {
+          "$ref": "#/$defs/SignedMoney"
+        },
+        "current_loan_payments": {
+          "$ref": "#/$defs/Money"
+        },
+        "max_overdue_days_12m": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "months_with_inflow_6m": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 6
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "business_age_months",
+        "inflow_avg",
+        "seasonality",
+        "volatility",
+        "free_cash_flow_m6",
+        "current_loan_payments",
+        "max_overdue_days_12m",
+        "months_with_inflow_6m"
+      ],
+      "description": "Показатели профиля PRF-03, PRF-05…PRF-10"
+    },
+    "GapReason": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "PAYMENT",
+            "INFLOW_DROP"
+          ],
+          "description": "Регулярный платёж в окне разрыва или снижение поступлений"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TxCategory"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "counterparty": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "amount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "date": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "drop_pct": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "category",
+        "counterparty",
+        "amount",
+        "date",
+        "drop_pct"
+      ],
+      "description": "Причина разрыва (CF-06)"
+    },
+    "Gap": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "$ref": "#/$defs/Date"
+        },
+        "probability": {
+          "$ref": "#/$defs/Probability"
+        },
+        "deficit": {
+          "$ref": "#/$defs/Money"
+        },
+        "cushion": {
+          "$ref": "#/$defs/Money"
+        },
+        "return_date_p50": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GapReason"
+          },
+          "maxItems": 4
+        },
+        "recurring_last_year": {
+          "type": "boolean",
+          "description": "В том же месяце прошлого года остаток был ниже подушки"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "date",
+        "probability",
+        "deficit",
+        "cushion",
+        "return_date_p50",
+        "reasons",
+        "recurring_last_year"
+      ],
+      "description": "Найденный разрыв (CF-04)"
+    },
+    "Profile": {
+      "type": "object",
+      "properties": {
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "version": {
+          "$ref": "#/$defs/Version"
+        },
+        "as_of": {
+          "$ref": "#/$defs/DateTime"
+        },
+        "registry": {
+          "$ref": "#/$defs/RegistryData"
+        },
+        "metrics": {
+          "$ref": "#/$defs/ProfileMetrics"
+        },
+        "expected_gap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gap"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sources": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/SourceMark"
+          },
+          "description": "Источник и дата каждого поля: ключ — путь поля (registry.name, metrics.inflow_avg.m6)"
+        },
+        "demo_bank_data": {
+          "type": "boolean",
+          "description": "Банковские данные синтетические — интерфейс показывает метку «данные банка — демо»"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "inn",
+        "version",
+        "as_of",
+        "registry",
+        "metrics",
+        "expected_gap",
+        "sources",
+        "demo_bank_data"
+      ],
+      "description": "Профиль компании для подбора"
+    },
+    "Collateral": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/CollateralKind"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "value"
+      ],
+      "description": "Обеспечение; value обязателен для EQUIPMENT, VEHICLE, REAL_ESTATE и равен null для GUARANTOR"
+    },
+    "NeedFields": {
+      "type": "object",
+      "properties": {
+        "goal": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Goal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "confidence": {
+              "type": "number",
+              "enum": [
+                0,
+                0.5,
+                1
+              ],
+              "description": "NEED-03"
+            },
+            "is_default": {
+              "type": "boolean",
+              "description": "Подставлено значение по умолчанию — показывать «допущение»"
+            },
+            "source": {
+              "$ref": "#/$defs/FieldSource"
+            },
+            "fragment": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "description": "Фрагмент текста клиента, из которого взято значение"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "value",
+            "confidence",
+            "is_default",
+            "source",
+            "fragment"
+          ],
+          "description": "Цель; null — не определена, нужен вопрос"
+        },
+        "amount": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Money"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "confidence": {
+              "type": "number",
+              "enum": [
+                0,
+                0.5,
+                1
+              ],
+              "description": "NEED-03"
+            },
+            "is_default": {
+              "type": "boolean",
+              "description": "Подставлено значение по умолчанию — показывать «допущение»"
+            },
+            "source": {
+              "$ref": "#/$defs/FieldSource"
+            },
+            "fragment": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "description": "Фрагмент текста клиента, из которого взято значение"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "value",
+            "confidence",
+            "is_default",
+            "source",
+            "fragment"
+          ],
+          "description": "Сумма; null — «не знаю» (NEED-06)"
+        },
+        "term_months": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 120
+            },
+            "confidence": {
+              "type": "number",
+              "enum": [
+                0,
+                0.5,
+                1
+              ],
+              "description": "NEED-03"
+            },
+            "is_default": {
+              "type": "boolean",
+              "description": "Подставлено значение по умолчанию — показывать «допущение»"
+            },
+            "source": {
+              "$ref": "#/$defs/FieldSource"
+            },
+            "fragment": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "description": "Фрагмент текста клиента, из которого взято значение"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "value",
+            "confidence",
+            "is_default",
+            "source",
+            "fragment"
+          ],
+          "description": "Срок, мес."
+        },
+        "collateral": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Collateral"
+              },
+              "maxItems": 5
+            },
+            "confidence": {
+              "type": "number",
+              "enum": [
+                0,
+                0.5,
+                1
+              ],
+              "description": "NEED-03"
+            },
+            "is_default": {
+              "type": "boolean",
+              "description": "Подставлено значение по умолчанию — показывать «допущение»"
+            },
+            "source": {
+              "$ref": "#/$defs/FieldSource"
+            },
+            "fragment": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "description": "Фрагмент текста клиента, из которого взято значение"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "value",
+            "confidence",
+            "is_default",
+            "source",
+            "fragment"
+          ],
+          "description": "Обеспечение; пустой список — «нет»"
+        },
+        "urgency": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "$ref": "#/$defs/Urgency"
+            },
+            "confidence": {
+              "type": "number",
+              "enum": [
+                0,
+                0.5,
+                1
+              ],
+              "description": "NEED-03"
+            },
+            "is_default": {
+              "type": "boolean",
+              "description": "Подставлено значение по умолчанию — показывать «допущение»"
+            },
+            "source": {
+              "$ref": "#/$defs/FieldSource"
+            },
+            "fragment": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "description": "Фрагмент текста клиента, из которого взято значение"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "value",
+            "confidence",
+            "is_default",
+            "source",
+            "fragment"
+          ],
+          "description": "Срочность"
+        },
+        "priority": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "$ref": "#/$defs/Priority"
+            },
+            "confidence": {
+              "type": "number",
+              "enum": [
+                0,
+                0.5,
+                1
+              ],
+              "description": "NEED-03"
+            },
+            "is_default": {
+              "type": "boolean",
+              "description": "Подставлено значение по умолчанию — показывать «допущение»"
+            },
+            "source": {
+              "$ref": "#/$defs/FieldSource"
+            },
+            "fragment": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "description": "Фрагмент текста клиента, из которого взято значение"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "value",
+            "confidence",
+            "is_default",
+            "source",
+            "fragment"
+          ],
+          "description": "Приоритет"
+        },
+        "regularity": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "$ref": "#/$defs/Regularity"
+            },
+            "confidence": {
+              "type": "number",
+              "enum": [
+                0,
+                0.5,
+                1
+              ],
+              "description": "NEED-03"
+            },
+            "is_default": {
+              "type": "boolean",
+              "description": "Подставлено значение по умолчанию — показывать «допущение»"
+            },
+            "source": {
+              "$ref": "#/$defs/FieldSource"
+            },
+            "fragment": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "description": "Фрагмент текста клиента, из которого взято значение"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "value",
+            "confidence",
+            "is_default",
+            "source",
+            "fragment"
+          ],
+          "description": "Регулярность"
+        },
+        "comfortable_payment": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Money"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "confidence": {
+              "type": "number",
+              "enum": [
+                0,
+                0.5,
+                1
+              ],
+              "description": "NEED-03"
+            },
+            "is_default": {
+              "type": "boolean",
+              "description": "Подставлено значение по умолчанию — показывать «допущение»"
+            },
+            "source": {
+              "$ref": "#/$defs/FieldSource"
+            },
+            "fragment": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "description": "Фрагмент текста клиента, из которого взято значение"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "value",
+            "confidence",
+            "is_default",
+            "source",
+            "fragment"
+          ],
+          "description": "Комфортный платёж; null — не учитывается"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "goal",
+        "amount",
+        "term_months",
+        "collateral",
+        "urgency",
+        "priority",
+        "regularity",
+        "comfortable_payment"
+      ],
+      "description": "8 полей потребности"
+    },
+    "Need": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "origin": {
+          "$ref": "#/$defs/NeedOrigin"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 2000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fields": {
+          "$ref": "#/$defs/NeedFields"
+        },
+        "non_target": {
+          "type": "boolean",
+          "description": "Запрос нецелевой (NEED-07)"
+        },
+        "questions_asked": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "proposed_amount": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "$ref": "#/$defs/Money"
+                },
+                "basis": {
+                  "type": "string",
+                  "enum": [
+                    "GAP_DEFICIT",
+                    "BEST_VARIANT_AVAILABLE"
+                  ],
+                  "description": "Откуда сумма"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "basis"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "insight_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "$ref": "#/$defs/DateTime"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/DateTime"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "inn",
+        "version",
+        "origin",
+        "text",
+        "fields",
+        "non_target",
+        "questions_asked",
+        "proposed_amount",
+        "insight_id",
+        "created_at",
+        "updated_at"
+      ],
+      "description": "Потребность клиента"
+    },
+    "NeedFieldsInput": {
+      "type": "object",
+      "properties": {
+        "goal": {
+          "$ref": "#/$defs/Goal"
+        },
+        "amount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "term_months": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "collateral": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Collateral"
+          },
+          "maxItems": 5
+        },
+        "urgency": {
+          "$ref": "#/$defs/Urgency"
+        },
+        "priority": {
+          "$ref": "#/$defs/Priority"
+        },
+        "regularity": {
+          "$ref": "#/$defs/Regularity"
+        },
+        "comfortable_payment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Значения полей, введённые клиентом в форме или карточке; отсутствующее поле не меняется"
+    },
+    "QuestionOption": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "description": "Значение поля, которое уйдёт в PATCH /needs/{id}"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "label"
+      ]
+    },
+    "Question": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "field": {
+          "$ref": "#/$defs/NeedField"
+        },
+        "text": {
+          "type": "string",
+          "description": "Текст вопроса"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/QuestionOption"
+          },
+          "minItems": 2,
+          "maxItems": 6
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "field",
+        "text",
+        "options",
+        "number"
+      ],
+      "description": "Уточняющий вопрос (NEED-05)"
+    },
+    "NeedResult": {
+      "type": "object",
+      "properties": {
+        "need": {
+          "$ref": "#/$defs/Need"
+        },
+        "next": {
+          "$ref": "#/$defs/NeedNext"
+        },
+        "question": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Question"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "need",
+        "next",
+        "question"
+      ],
+      "description": "Результат обработки потребности: следующий вопрос, готовность к подбору или нецелевой запрос"
+    },
+    "Product": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ProductCode"
+        },
+        "name": {
+          "type": "string"
+        },
+        "amount_min": {
+          "$ref": "#/$defs/Money"
+        },
+        "amount_max": {
+          "$ref": "#/$defs/Money"
+        },
+        "amount_max_rule": {
+          "anyOf": [
+            {
+              "type": "string",
+              "description": "Правило максимума, если он зависит от данных (P1: 50% поступлений; P5: 70% залога)"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "term_min_months": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "term_max_months": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "base_rate": {
+          "$ref": "#/$defs/Rate"
+        },
+        "grade_surcharge_applies": {
+          "type": "boolean",
+          "description": "Применяется ли надбавка грейда (у P6 — нет)"
+        },
+        "commission_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "deferral_months": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "collateral_rule": {
+          "type": "string",
+          "description": "Требование к обеспечению текстом для клиента"
+        },
+        "eligibility_rule": {
+          "type": "string",
+          "description": "Условия допуска текстом для клиента"
+        },
+        "fast": {
+          "type": "boolean",
+          "description": "Быстрое оформление (F6, приоритет «скорость»)"
+        },
+        "catalog_version": {
+          "$ref": "#/$defs/Version"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "name",
+        "amount_min",
+        "amount_max",
+        "amount_max_rule",
+        "term_min_months",
+        "term_max_months",
+        "base_rate",
+        "grade_surcharge_applies",
+        "commission_pct",
+        "deferral_months",
+        "collateral_rule",
+        "eligibility_rule",
+        "fast",
+        "catalog_version"
+      ],
+      "description": "Продукт каталога (CAT-01)"
+    },
+    "ReasonCodeEntry": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ReasonCode"
+        },
+        "group": {
+          "$ref": "#/$defs/ReasonGroup"
+        },
+        "client_text": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "#/$defs/Version"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "group",
+        "client_text",
+        "version"
+      ],
+      "description": "Текст кода причины для клиента"
+    },
+    "ShapItem": {
+      "type": "object",
+      "properties": {
+        "feature": {
+          "type": "string",
+          "description": "Имя признака"
+        },
+        "value": {
+          "description": "Значение признака"
+        },
+        "shap": {
+          "type": "number",
+          "description": "Вклад в PD (лог-шансы)"
+        },
+        "reason_code": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReasonCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "feature",
+        "value",
+        "shap",
+        "reason_code"
+      ]
+    },
+    "FactorScores": {
+      "type": "object",
+      "properties": {
+        "F1": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "F2": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "F3": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "F4": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "F5": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "F6": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "F1",
+        "F2",
+        "F3",
+        "F4",
+        "F5",
+        "F6"
+      ],
+      "description": "Значения или вклады факторов"
+    },
+    "Variant": {
+      "type": "object",
+      "properties": {
+        "product_code": {
+          "$ref": "#/$defs/ProductCode"
+        },
+        "product_name": {
+          "type": "string"
+        },
+        "amount_needed": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "amount_available": {
+          "$ref": "#/$defs/Money"
+        },
+        "capacity_limit": {
+          "$ref": "#/$defs/Money"
+        },
+        "term_months": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rate": {
+          "$ref": "#/$defs/Rate"
+        },
+        "pd": {
+          "$ref": "#/$defs/Probability"
+        },
+        "grade": {
+          "$ref": "#/$defs/Grade"
+        },
+        "chance": {
+          "$ref": "#/$defs/Chance"
+        },
+        "payment": {
+          "$ref": "#/$defs/Money"
+        },
+        "payment_during_deferral": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "overpayment": {
+          "$ref": "#/$defs/Money"
+        },
+        "commission": {
+          "$ref": "#/$defs/Money"
+        },
+        "deferral_months": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "guarantor_required": {
+          "type": "boolean"
+        },
+        "adjustments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Adjustment"
+          }
+        },
+        "documents_required": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DocumentType"
+          }
+        },
+        "documents_recommended": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DocumentType"
+          }
+        },
+        "factors": {
+          "$ref": "#/$defs/FactorScores"
+        },
+        "contributions": {
+          "$ref": "#/$defs/FactorScores"
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "why_fits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Factor"
+          },
+          "maxItems": 3,
+          "description": "3 фактора с наибольшим вкладом (REC-12)"
+        },
+        "risk_reason_codes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReasonCode"
+          },
+          "maxItems": 3,
+          "description": "Reason codes топ-3 SHAP, повышающих PD"
+        },
+        "shap_top": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ShapItem"
+          },
+          "maxItems": 3
+        },
+        "comfortable_payment_exceeded": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "product_code",
+        "product_name",
+        "amount_needed",
+        "amount_available",
+        "capacity_limit",
+        "term_months",
+        "rate",
+        "pd",
+        "grade",
+        "chance",
+        "payment",
+        "payment_during_deferral",
+        "overpayment",
+        "commission",
+        "deferral_months",
+        "guarantor_required",
+        "adjustments",
+        "documents_required",
+        "documents_recommended",
+        "factors",
+        "contributions",
+        "score",
+        "why_fits",
+        "risk_reason_codes",
+        "shap_top",
+        "comfortable_payment_exceeded"
+      ],
+      "description": "Вариант продукта (REC-02…REC-06)"
+    },
+    "ProductEvaluation": {
+      "type": "object",
+      "properties": {
+        "product_code": {
+          "$ref": "#/$defs/ProductCode"
+        },
+        "eligibility": {
+          "$ref": "#/$defs/EligibilityStatus"
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReasonCode"
+          },
+          "description": "Пусто для ADMITTED и ADMITTED_ADJUSTED"
+        },
+        "variant": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Variant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "product_code",
+        "eligibility",
+        "reason_codes",
+        "variant"
+      ],
+      "description": "Результат допуска и расчёта по одному продукту"
+    },
+    "ConfigVersions": {
+      "type": "object",
+      "properties": {
+        "catalog": {
+          "$ref": "#/$defs/Version"
+        },
+        "goal_fit": {
+          "$ref": "#/$defs/Version"
+        },
+        "grades": {
+          "$ref": "#/$defs/Version"
+        },
+        "weights": {
+          "$ref": "#/$defs/Version"
+        },
+        "checklist": {
+          "$ref": "#/$defs/Version"
+        },
+        "reason_codes": {
+          "$ref": "#/$defs/Version"
+        },
+        "pd_model": {
+          "$ref": "#/$defs/Version"
+        },
+        "feature_builder": {
+          "$ref": "#/$defs/Version"
+        },
+        "extraction_prompt": {
+          "$ref": "#/$defs/Version"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "catalog",
+        "goal_fit",
+        "grades",
+        "weights",
+        "checklist",
+        "reason_codes",
+        "pd_model",
+        "feature_builder",
+        "extraction_prompt"
+      ],
+      "description": "Версии артефактов, использованных в расчёте (REC-08)"
+    },
+    "RecommendationBody": {
+      "type": "object",
+      "properties": {
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "need": {
+          "$ref": "#/$defs/Need"
+        },
+        "profile_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "weights_profile": {
+          "$ref": "#/$defs/Priority"
+        },
+        "evaluations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProductEvaluation"
+          },
+          "minItems": 6,
+          "maxItems": 6
+        },
+        "best_product_code": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProductCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "alternative_product_codes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProductCode"
+          },
+          "maxItems": 2
+        },
+        "proposed_amount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "versions": {
+          "$ref": "#/$defs/ConfigVersions"
+        },
+        "latency_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "inn",
+        "need",
+        "profile_version",
+        "weights_profile",
+        "evaluations",
+        "best_product_code",
+        "alternative_product_codes",
+        "proposed_amount",
+        "versions",
+        "latency_ms"
+      ],
+      "description": "Результат расчёта подбора — ответ ml-service"
+    },
+    "Recommendation": {
+      "type": "object",
+      "properties": {
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "need": {
+          "$ref": "#/$defs/Need"
+        },
+        "profile_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "weights_profile": {
+          "$ref": "#/$defs/Priority"
+        },
+        "evaluations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProductEvaluation"
+          },
+          "minItems": 6,
+          "maxItems": 6
+        },
+        "best_product_code": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProductCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "alternative_product_codes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProductCode"
+          },
+          "maxItems": 2
+        },
+        "proposed_amount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "versions": {
+          "$ref": "#/$defs/ConfigVersions"
+        },
+        "latency_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "created_at": {
+          "$ref": "#/$defs/DateTime"
+        },
+        "trigger": {
+          "$ref": "#/$defs/RecommendationTrigger"
+        },
+        "previous_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "inn",
+        "need",
+        "profile_version",
+        "weights_profile",
+        "evaluations",
+        "best_product_code",
+        "alternative_product_codes",
+        "proposed_amount",
+        "versions",
+        "latency_ms",
+        "id",
+        "created_at",
+        "trigger",
+        "previous_id"
+      ],
+      "description": "Снимок подбора (REC-08), неизменяемый: тело от ml-service + поля core-api"
+    },
+    "FactorDiff": {
+      "type": "object",
+      "properties": {
+        "factor": {
+          "$ref": "#/$defs/Factor"
+        },
+        "this": {
+          "type": "number"
+        },
+        "best": {
+          "type": "number"
+        },
+        "diff": {
+          "type": "number",
+          "description": "this − best по вкладу"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "factor",
+        "this",
+        "best",
+        "diff"
+      ]
+    },
+    "WhyNot": {
+      "type": "object",
+      "properties": {
+        "product_code": {
+          "$ref": "#/$defs/ProductCode"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "ELIGIBILITY",
+            "RANKING",
+            "IS_BEST"
+          ],
+          "description": "Не допущен; уступил в ранжировании; это и есть лучший"
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReasonCode"
+          }
+        },
+        "factor_diffs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FactorDiff"
+          }
+        },
+        "variant": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Variant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "best_variant": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Variant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "product_code",
+        "kind",
+        "reason_codes",
+        "factor_diffs",
+        "variant",
+        "best_variant"
+      ],
+      "description": "Ответ на «почему не X?» (REC-14)"
+    },
+    "WhatIfChanges": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "term_months": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 120
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "product_code": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProductCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "repay_loan_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Uuid"
+          },
+          "maxItems": 2
+        },
+        "add_collateral": {
+          "type": "boolean",
+          "description": "Добавить залог из потребности"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "amount",
+        "term_months",
+        "product_code",
+        "repay_loan_ids",
+        "add_collateral"
+      ],
+      "description": "Изменения относительно исходных параметров; null — без изменения"
+    },
+    "WhatIfOption": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "changes": {
+          "$ref": "#/$defs/WhatIfChanges"
+        },
+        "cost": {
+          "type": "number",
+          "minimum": 0
+        },
+        "outcome": {
+          "$ref": "#/$defs/DecisionOutcome"
+        },
+        "requires_review": {
+          "type": "boolean",
+          "description": "Итог «доп. проверка» — пометка «потребуется проверка сотрудником»"
+        },
+        "variant": {
+          "$ref": "#/$defs/Variant"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "changes",
+        "cost",
+        "outcome",
+        "requires_review",
+        "variant"
+      ],
+      "description": "Вариант «что сделать» (WI-04)"
+    },
+    "WhatIfResult": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": "object",
+          "properties": {
+            "product_code": {
+              "$ref": "#/$defs/ProductCode"
+            },
+            "amount": {
+              "$ref": "#/$defs/Money"
+            },
+            "term_months": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "product_code",
+            "amount",
+            "term_months"
+          ]
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WhatIfOption"
+          },
+          "maxItems": 3
+        },
+        "combinations_evaluated": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "suggest_statement_upload": {
+          "type": "boolean",
+          "description": "Показать действие «Загрузить выписку другого банка» (WI-08)"
+        },
+        "latency_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "base",
+        "options",
+        "combinations_evaluated",
+        "suggest_statement_upload",
+        "latency_ms"
+      ],
+      "description": "Результат перебора (WI-02…WI-04)"
+    },
+    "WhatIfEvaluation": {
+      "type": "object",
+      "properties": {
+        "changes": {
+          "$ref": "#/$defs/WhatIfChanges"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DecisionOutcome"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "eligibility": {
+          "$ref": "#/$defs/EligibilityStatus"
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReasonCode"
+          }
+        },
+        "variant": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Variant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latency_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "changes",
+        "outcome",
+        "eligibility",
+        "reason_codes",
+        "variant",
+        "latency_ms"
+      ],
+      "description": "Пересчёт одной комбинации (WI-05)"
+    },
+    "StatementTransaction": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "$ref": "#/$defs/Date"
+        },
+        "amount": {
+          "$ref": "#/$defs/Money"
+        },
+        "direction": {
+          "$ref": "#/$defs/Direction"
+        },
+        "counterparty": {
+          "type": "string"
+        },
+        "counterparty_inn": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Inn"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/TxCategory"
+        },
+        "category_confidence": {
+          "$ref": "#/$defs/Probability"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "date",
+        "amount",
+        "direction",
+        "counterparty",
+        "counterparty_inn",
+        "purpose",
+        "category",
+        "category_confidence"
+      ]
+    },
+    "StatementChecks": {
+      "type": "object",
+      "properties": {
+        "balance_ok": {
+          "type": "boolean"
+        },
+        "inn_match": {
+          "type": "boolean"
+        },
+        "period_months": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "period_ok": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "balance_ok",
+        "inn_match",
+        "period_months",
+        "period_ok"
+      ],
+      "description": "Проверки DOC-04"
+    },
+    "StatementParseResult": {
+      "type": "object",
+      "properties": {
+        "doc_kind": {
+          "const": "BANK_STATEMENT"
+        },
+        "bank_name": {
+          "type": "string"
+        },
+        "bic": {
+          "type": "string",
+          "pattern": "^[0-9]{9}$"
+        },
+        "account": {
+          "type": "string",
+          "pattern": "^[0-9]{20}$"
+        },
+        "owner_inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "period_from": {
+          "$ref": "#/$defs/Date"
+        },
+        "period_to": {
+          "$ref": "#/$defs/Date"
+        },
+        "opening_balance": {
+          "$ref": "#/$defs/SignedMoney"
+        },
+        "closing_balance": {
+          "$ref": "#/$defs/SignedMoney"
+        },
+        "transactions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StatementTransaction"
+          }
+        },
+        "checks": {
+          "$ref": "#/$defs/StatementChecks"
+        },
+        "field_confidence": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Probability"
+          }
+        },
+        "page_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "used_ocr": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "doc_kind",
+        "bank_name",
+        "bic",
+        "account",
+        "owner_inn",
+        "period_from",
+        "period_to",
+        "opening_balance",
+        "closing_balance",
+        "transactions",
+        "checks",
+        "field_confidence",
+        "page_count",
+        "used_ocr"
+      ],
+      "description": "Распознанная выписка (DOC-03)"
+    },
+    "FinancialStatementsResult": {
+      "type": "object",
+      "properties": {
+        "doc_kind": {
+          "const": "FINANCIAL_STATEMENTS"
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 2000,
+          "maximum": 2100
+        },
+        "lines": {
+          "type": "object",
+          "properties": {
+            "2110": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "2400": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "1600": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "1700": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "1500": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "2110",
+            "2400",
+            "1600",
+            "1700",
+            "1500"
+          ],
+          "description": "Строки: 2110 выручка, 2400 чистая прибыль, 1600 активы, 1700 пассивы, 1500 краткосрочные обязательства, тыс. ₽"
+        },
+        "balance_ok": {
+          "type": "boolean",
+          "description": "1600 = 1700"
+        },
+        "field_confidence": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Probability"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "doc_kind",
+        "year",
+        "lines",
+        "balance_ok",
+        "field_confidence"
+      ],
+      "description": "Распознанная отчётность (DOC-09)"
+    },
+    "FieldEdit": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Путь поля, например closing_balance или transactions[3].amount"
+        },
+        "original": {
+          "description": "Исходное значение"
+        },
+        "value": {
+          "description": "Новое значение"
+        },
+        "deviation_pct": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "to_underwriter": {
+          "type": "boolean",
+          "description": "Передаётся андеррайтеру по DOC-06"
+        },
+        "edited_at": {
+          "$ref": "#/$defs/DateTime"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "original",
+        "value",
+        "deviation_pct",
+        "to_underwriter",
+        "edited_at"
+      ]
+    },
+    "Document": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "application_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "type": {
+          "$ref": "#/$defs/DocumentType"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "mime": {
+          "type": "string"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10485760
+        },
+        "status": {
+          "$ref": "#/$defs/DocumentStatus"
+        },
+        "reject_reason": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DocumentRejectReason"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parse_result": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/StatementParseResult"
+                },
+                {
+                  "$ref": "#/$defs/FinancialStatementsResult"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "edits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FieldEdit"
+          }
+        },
+        "uploaded_at": {
+          "$ref": "#/$defs/DateTime"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/DateTime"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "application_id",
+        "type",
+        "filename",
+        "mime",
+        "size_bytes",
+        "status",
+        "reject_reason",
+        "parse_result",
+        "edits",
+        "uploaded_at",
+        "updated_at"
+      ],
+      "description": "Документ заявки"
+    },
+    "ChecklistItem": {
+      "type": "object",
+      "properties": {
+        "document_type": {
+          "$ref": "#/$defs/DocumentType"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "recommended": {
+          "type": "boolean"
+        },
+        "document_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Uuid"
+          }
+        },
+        "done": {
+          "type": "boolean",
+          "description": "Есть документ со статусом ACCEPTED или PARSED"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "document_type",
+        "required",
+        "recommended",
+        "document_ids",
+        "done"
+      ]
+    },
+    "Consent": {
+      "type": "object",
+      "properties": {
+        "given": {
+          "type": "boolean"
+        },
+        "given_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DateTime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "given",
+        "given_at"
+      ],
+      "description": "Согласие на проверку кредитной истории (APP-03)"
+    },
+    "Obligation": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "REPAY_LOAN"
+        },
+        "loan_id": {
+          "$ref": "#/$defs/Uuid"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "loan_id"
+      ],
+      "description": "Обязательство клиента из варианта what-if (WI-07)"
+    },
+    "ApplicationParams": {
+      "type": "object",
+      "properties": {
+        "product_code": {
+          "$ref": "#/$defs/ProductCode"
+        },
+        "amount": {
+          "$ref": "#/$defs/Money"
+        },
+        "term_months": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "goal": {
+          "$ref": "#/$defs/Goal"
+        },
+        "collateral": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Collateral"
+          },
+          "maxItems": 5
+        },
+        "obligations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Obligation"
+          },
+          "maxItems": 2
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "product_code",
+        "amount",
+        "term_months",
+        "goal",
+        "collateral",
+        "obligations"
+      ],
+      "description": "Параметры кредита в заявке"
+    },
+    "Application": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "$ref": "#/$defs/ApplicationStatus"
+        },
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "recommendation_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "params": {
+          "$ref": "#/$defs/ApplicationParams"
+        },
+        "phone": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^\\+7[0-9]{10}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "email": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "email"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "company": {
+          "$ref": "#/$defs/CompanyPreview"
+        },
+        "prefilled_fields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "product_code",
+              "amount",
+              "term_months",
+              "goal",
+              "collateral",
+              "phone",
+              "email"
+            ],
+            "description": "Поле APP-01"
+          },
+          "description": "Поля, заполненные автоматически (метрика автозаполнения)"
+        },
+        "checklist": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChecklistItem"
+          }
+        },
+        "consent": {
+          "$ref": "#/$defs/Consent"
+        },
+        "status_text": {
+          "type": "string",
+          "description": "Что происходит (таблица статусов ТЗ, раздел 6)"
+        },
+        "next_step_text": {
+          "type": "string",
+          "description": "Что нужно от клиента"
+        },
+        "decision_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "previous_version_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "$ref": "#/$defs/DateTime"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/DateTime"
+        },
+        "submitted_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DateTime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "status",
+        "inn",
+        "recommendation_id",
+        "params",
+        "phone",
+        "email",
+        "company",
+        "prefilled_fields",
+        "checklist",
+        "consent",
+        "status_text",
+        "next_step_text",
+        "decision_id",
+        "previous_version_id",
+        "created_at",
+        "updated_at",
+        "submitted_at"
+      ],
+      "description": "Заявка"
+    },
+    "ApplicationPatch": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "$ref": "#/$defs/Money"
+        },
+        "term_months": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "goal": {
+          "$ref": "#/$defs/Goal"
+        },
+        "collateral": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Collateral"
+          },
+          "maxItems": 5
+        },
+        "phone": {
+          "type": "string",
+          "pattern": "^\\+7[0-9]{10}$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Изменение полей черновика (APP-02, APP-08); продукт меняется только новой версией"
+    },
+    "FeatureValue": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "description": "Значение"
+        },
+        "source": {
+          "$ref": "#/$defs/FieldSource"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "value",
+        "source"
+      ]
+    },
+    "UnderwriterDecision": {
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "string",
+          "enum": [
+            "APPROVE",
+            "DECLINE"
+          ],
+          "description": "Решение"
+        },
+        "comment": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "user": {
+          "type": "string"
+        },
+        "at": {
+          "$ref": "#/$defs/DateTime"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "decision",
+        "comment",
+        "user",
+        "at"
+      ]
+    },
+    "DecisionBody": {
+      "type": "object",
+      "properties": {
+        "application_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "application_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "outcome": {
+          "$ref": "#/$defs/DecisionOutcome"
+        },
+        "stop_reason": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReasonCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pd_raw": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Probability"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pd": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Probability"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "grade": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Grade"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "amount_requested": {
+          "$ref": "#/$defs/Money"
+        },
+        "amount_approved": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Rate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "term_months": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "payment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReasonCode"
+          },
+          "maxItems": 6
+        },
+        "shap_top10": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ShapItem"
+          },
+          "maxItems": 10
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FeatureValue"
+          }
+        },
+        "review_triggers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "PD_ZONE",
+              "UNVERIFIED_STATEMENT",
+              "CLIENT_EDITS"
+            ],
+            "description": "Почему доп. проверка (SC-04)"
+          }
+        },
+        "recommendation_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "versions": {
+          "$ref": "#/$defs/ConfigVersions"
+        },
+        "decided_at": {
+          "$ref": "#/$defs/DateTime"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "application_id",
+        "application_version",
+        "inn",
+        "outcome",
+        "stop_reason",
+        "pd_raw",
+        "pd",
+        "grade",
+        "amount_requested",
+        "amount_approved",
+        "rate",
+        "term_months",
+        "payment",
+        "reason_codes",
+        "shap_top10",
+        "features",
+        "review_triggers",
+        "recommendation_id",
+        "versions",
+        "decided_at"
+      ],
+      "description": "Снимок решения скоринга (SC-07) — ответ ml-service"
+    },
+    "Decision": {
+      "type": "object",
+      "properties": {
+        "application_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "application_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "outcome": {
+          "$ref": "#/$defs/DecisionOutcome"
+        },
+        "stop_reason": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReasonCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pd_raw": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Probability"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pd": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Probability"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "grade": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Grade"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "amount_requested": {
+          "$ref": "#/$defs/Money"
+        },
+        "amount_approved": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Rate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "term_months": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "payment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReasonCode"
+          },
+          "maxItems": 6
+        },
+        "shap_top10": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ShapItem"
+          },
+          "maxItems": 10
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FeatureValue"
+          }
+        },
+        "review_triggers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "PD_ZONE",
+              "UNVERIFIED_STATEMENT",
+              "CLIENT_EDITS"
+            ],
+            "description": "Почему доп. проверка (SC-04)"
+          }
+        },
+        "recommendation_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "versions": {
+          "$ref": "#/$defs/ConfigVersions"
+        },
+        "decided_at": {
+          "$ref": "#/$defs/DateTime"
+        },
+        "id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "final_outcome": {
+          "type": "string",
+          "enum": [
+            "APPROVED",
+            "APPROVED_REDUCED",
+            "MANUAL_REVIEW",
+            "DECLINED"
+          ],
+          "description": "Итог с учётом решения андеррайтера"
+        },
+        "underwriter": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UnderwriterDecision"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "application_id",
+        "application_version",
+        "inn",
+        "outcome",
+        "stop_reason",
+        "pd_raw",
+        "pd",
+        "grade",
+        "amount_requested",
+        "amount_approved",
+        "rate",
+        "term_months",
+        "payment",
+        "reason_codes",
+        "shap_top10",
+        "features",
+        "review_triggers",
+        "recommendation_id",
+        "versions",
+        "decided_at",
+        "id",
+        "final_outcome",
+        "underwriter"
+      ],
+      "description": "Снимок решения (SC-07) с решением андеррайтера (UW-04)"
+    },
+    "ClientDecisionView": {
+      "type": "object",
+      "properties": {
+        "application_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "status": {
+          "$ref": "#/$defs/ApplicationStatus"
+        },
+        "amount_requested": {
+          "$ref": "#/$defs/Money"
+        },
+        "amount_approved": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Rate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "term_months": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "payment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReasonCodeEntry"
+          }
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "ACCEPT",
+              "WHAT_IF",
+              "CONTACT_STAFF"
+            ],
+            "description": "Доступное действие (APP-06)"
+          }
+        },
+        "decided_at": {
+          "$ref": "#/$defs/DateTime"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "application_id",
+        "status",
+        "amount_requested",
+        "amount_approved",
+        "rate",
+        "term_months",
+        "payment",
+        "reasons",
+        "actions",
+        "decided_at"
+      ],
+      "description": "Решение для клиента: без PD и SHAP"
+    },
+    "CashflowMonth": {
+      "type": "object",
+      "properties": {
+        "month": {
+          "$ref": "#/$defs/Month"
+        },
+        "inflow": {
+          "$ref": "#/$defs/Money"
+        },
+        "outflow": {
+          "$ref": "#/$defs/Money"
+        },
+        "by_category": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/TxCategory"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/Money"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "month",
+        "inflow",
+        "outflow",
+        "by_category"
+      ]
+    },
+    "RecurringPayment": {
+      "type": "object",
+      "properties": {
+        "counterparty": {
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/TxCategory"
+        },
+        "period_days": {
+          "type": "integer",
+          "enum": [
+            7,
+            14,
+            30,
+            90
+          ]
+        },
+        "amount": {
+          "$ref": "#/$defs/Money"
+        },
+        "next_date": {
+          "$ref": "#/$defs/Date"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "counterparty",
+        "category",
+        "period_days",
+        "amount",
+        "next_date"
+      ]
+    },
+    "CashflowSummary": {
+      "type": "object",
+      "properties": {
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "months": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CashflowMonth"
+          },
+          "maxItems": 12
+        },
+        "balance_daily": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "$ref": "#/$defs/Date"
+              },
+              "balance": {
+                "$ref": "#/$defs/SignedMoney"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "date",
+              "balance"
+            ]
+          }
+        },
+        "recurring": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RecurringPayment"
+          }
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FieldSource"
+          }
+        },
+        "as_of": {
+          "$ref": "#/$defs/DateTime"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "inn",
+        "months",
+        "balance_daily",
+        "recurring",
+        "sources",
+        "as_of"
+      ],
+      "description": "«Финансовый пульс» (CF-01)"
+    },
+    "Forecast": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "horizon_days": {
+          "type": "integer",
+          "enum": [
+            30,
+            60,
+            90
+          ]
+        },
+        "cushion": {
+          "$ref": "#/$defs/Money"
+        },
+        "daily": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "$ref": "#/$defs/Date"
+              },
+              "p10": {
+                "$ref": "#/$defs/SignedMoney"
+              },
+              "p50": {
+                "$ref": "#/$defs/SignedMoney"
+              },
+              "p90": {
+                "$ref": "#/$defs/SignedMoney"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "date",
+              "p10",
+              "p50",
+              "p90"
+            ]
+          }
+        },
+        "model_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "generated_at": {
+          "$ref": "#/$defs/DateTime"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "inn",
+        "horizon_days",
+        "cushion",
+        "daily",
+        "model_version",
+        "generated_at"
+      ],
+      "description": "Прогноз остатка (CF-03)"
+    },
+    "Insight": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "gap": {
+          "$ref": "#/$defs/Gap"
+        },
+        "days_until": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "recommendation_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "NEW",
+            "OPENED",
+            "DISMISSED"
+          ],
+          "description": "Реакция клиента"
+        },
+        "created_at": {
+          "$ref": "#/$defs/DateTime"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "inn",
+        "gap",
+        "days_until",
+        "recommendation_id",
+        "status",
+        "created_at"
+      ],
+      "description": "Карточка разрыва (CF-06)"
+    },
+    "PendingAction": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "type": {
+          "$ref": "#/$defs/ActionType"
+        },
+        "label": {
+          "type": "string",
+          "description": "Подпись кнопки"
+        },
+        "payload": {
+          "type": "object",
+          "description": "CREATE_APPLICATION: {recommendation_id}; FILL_FIELD: {application_id, field, value}; APPLY_WHAT_IF: {application_id|recommendation_id, option_id}"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "PROPOSED",
+            "CONFIRMED",
+            "EXPIRED"
+          ],
+          "description": "Статус"
+        },
+        "expires_at": {
+          "$ref": "#/$defs/DateTime"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "label",
+        "payload",
+        "status",
+        "expires_at"
+      ],
+      "description": "Предложенное действие (AI-11)"
+    },
+    "ChatMessage": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "USER",
+            "ASSISTANT"
+          ],
+          "description": "Автор"
+        },
+        "text": {
+          "type": "string"
+        },
+        "created_at": {
+          "$ref": "#/$defs/DateTime"
+        },
+        "need_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recommendation_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "question_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "action_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Uuid"
+          }
+        },
+        "blocked_by_guard": {
+          "type": "boolean",
+          "description": "Ответ заменён шаблоном (AI-08, AI-09)"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "role",
+        "text",
+        "created_at",
+        "need_id",
+        "recommendation_id",
+        "question_id",
+        "action_ids",
+        "blocked_by_guard"
+      ]
+    },
+    "ChatSession": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "stage": {
+          "$ref": "#/$defs/ChatStage"
+        },
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "need_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recommendation_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "application_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "insight_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "messages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChatMessage"
+          }
+        },
+        "assistant_enabled": {
+          "type": "boolean",
+          "description": "false — LLM отключена (NFR-09)"
+        },
+        "created_at": {
+          "$ref": "#/$defs/DateTime"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "stage",
+        "inn",
+        "need_id",
+        "recommendation_id",
+        "application_id",
+        "insight_id",
+        "messages",
+        "assistant_enabled",
+        "created_at"
+      ]
+    },
+    "Escalation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "reason": {
+          "$ref": "#/$defs/EscalationReason"
+        },
+        "session_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "application_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "description": "Резюме для сотрудника без лишних ПДн"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "OPEN",
+            "CLOSED"
+          ],
+          "description": "Статус"
+        },
+        "created_at": {
+          "$ref": "#/$defs/DateTime"
+        },
+        "closed_comment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "inn",
+        "reason",
+        "session_id",
+        "application_id",
+        "summary",
+        "status",
+        "created_at",
+        "closed_comment"
+      ],
+      "description": "Обращение (AI-07)"
+    },
+    "Discrepancy": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "CLIENT_EDIT",
+            "UNVERIFIED_STATEMENT",
+            "INFLOW_MISMATCH"
+          ],
+          "description": "UW-03"
+        },
+        "document_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "document_id",
+        "description",
+        "details"
+      ]
+    },
+    "UwQueueItem": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "APPLICATION",
+            "ESCALATION"
+          ],
+          "description": "Тип элемента очереди"
+        },
+        "id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "company_name": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string",
+          "description": "Продукт и сумма или причина обращения"
+        },
+        "since": {
+          "$ref": "#/$defs/DateTime"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "inn",
+        "company_name",
+        "title",
+        "since"
+      ],
+      "description": "Элемент очереди UW-01"
+    },
+    "UwCard": {
+      "type": "object",
+      "properties": {
+        "application": {
+          "$ref": "#/$defs/Application"
+        },
+        "need": {
+          "$ref": "#/$defs/Need"
+        },
+        "recommendation": {
+          "$ref": "#/$defs/Recommendation"
+        },
+        "decision": {
+          "$ref": "#/$defs/Decision"
+        },
+        "profile": {
+          "$ref": "#/$defs/Profile"
+        },
+        "forecast": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Forecast"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "discrepancies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Discrepancy"
+          }
+        },
+        "documents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Document"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "application",
+        "need",
+        "recommendation",
+        "decision",
+        "profile",
+        "forecast",
+        "discrepancies",
+        "documents"
+      ],
+      "description": "Карточка андеррайтера (UW-02)"
+    },
+    "Account": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "number": {
+          "type": "string",
+          "pattern": "^[0-9]{20}$"
+        },
+        "opened_at": {
+          "$ref": "#/$defs/Date"
+        },
+        "balance": {
+          "$ref": "#/$defs/SignedMoney"
+        },
+        "demo": {
+          "const": true
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "inn",
+        "number",
+        "opened_at",
+        "balance",
+        "demo"
+      ]
+    },
+    "BankTransaction": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "account_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "date": {
+          "$ref": "#/$defs/Date"
+        },
+        "amount": {
+          "$ref": "#/$defs/Money"
+        },
+        "direction": {
+          "$ref": "#/$defs/Direction"
+        },
+        "counterparty": {
+          "type": "string"
+        },
+        "counterparty_inn": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Inn"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "balance_after": {
+          "$ref": "#/$defs/SignedMoney"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "account_id",
+        "date",
+        "amount",
+        "direction",
+        "counterparty",
+        "counterparty_inn",
+        "purpose",
+        "balance_after"
+      ],
+      "description": "Операция по счёту. Категорию определяет ml-service, bank-sim её не отдаёт"
+    },
+    "Loan": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "lender": {
+          "type": "string"
+        },
+        "amount": {
+          "$ref": "#/$defs/Money"
+        },
+        "monthly_payment": {
+          "$ref": "#/$defs/Money"
+        },
+        "opened_at": {
+          "$ref": "#/$defs/Date"
+        },
+        "closed_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_overdue_days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "active": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "inn",
+        "lender",
+        "amount",
+        "monthly_payment",
+        "opened_at",
+        "closed_at",
+        "max_overdue_days",
+        "active"
+      ],
+      "description": "Кредит в кредитной истории"
+    },
+    "FraudFlag": {
+      "type": "object",
+      "properties": {
+        "inn": {
+          "$ref": "#/$defs/Inn"
+        },
+        "flag": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "inn",
+        "flag"
+      ]
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "event_id": "5b0b7d85-3a38-5c55-9950-15ff8aa68826",
+  "type": "profile.updated",
+  "source": "ml-service",
+  "time": "2026-10-14T09:00:00+07:00",
+  "subject": "7707083893",
+  "schema_version": "1.0.0",
+  "correlation_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "data": {
+    "inn": "7707083893",
+    "profile_version": "fb-1.0:2026-10-14T09:05:00",
+    "previous_version": "fb-1.0:2026-10-14T08:59:00",
+    "cause": "DOCUMENT",
+    "changed": [
+      {
+        "path": "metrics.inflow_avg.other_banks_m6",
+        "before": null,
+        "after": 2000000.0
+      }
+    ]
+  }
+}

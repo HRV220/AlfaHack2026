@@ -1,0 +1,39 @@
+{
+  "event_id": "e60f13bb-f2b1-50c0-be2f-9b739e358031",
+  "type": "cashflow.gap_detected",
+  "source": "ml-service",
+  "time": "2026-10-14T09:00:00+07:00",
+  "subject": "7707083893",
+  "schema_version": "1.0.0",
+  "correlation_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "data": {
+    "inn": "7707083893",
+    "forecast_id": "0e077429-6f68-561c-8ba8-95af650b3686",
+    "gap": {
+      "date": "2026-10-26",
+      "probability": 0.62,
+      "deficit": 612400.0,
+      "cushion": 245000.0,
+      "return_date_p50": "2026-11-09",
+      "reasons": [
+        {
+          "type": "PAYMENT",
+          "category": "TAXES",
+          "counterparty": "УФК по г. Москве",
+          "amount": 640000.0,
+          "date": "2026-10-25",
+          "drop_pct": null
+        },
+        {
+          "type": "PAYMENT",
+          "category": "SALARY",
+          "counterparty": "Сотрудники",
+          "amount": 460000.0,
+          "date": "2026-10-25",
+          "drop_pct": null
+        }
+      ],
+      "recurring_last_year": false
+    }
+  }
+}

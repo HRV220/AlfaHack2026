@@ -1,0 +1,104 @@
+{
+  "need": {
+    "id": "92abd506-d9a5-5c23-9194-a27d35de4ca3",
+    "inn": "7707083893",
+    "version": 1,
+    "origin": "TEXT",
+    "text": "Нужно 2 млн на закупку к новогоднему сезону, верну к марту",
+    "fields": {
+      "goal": {
+        "value": "PURCHASE",
+        "confidence": 1,
+        "is_default": false,
+        "source": "CLIENT",
+        "fragment": "на закупку"
+      },
+      "amount": {
+        "value": 2000000.0,
+        "confidence": 1,
+        "is_default": false,
+        "source": "CLIENT",
+        "fragment": "2 млн"
+      },
+      "term_months": {
+        "value": 5,
+        "confidence": 1,
+        "is_default": false,
+        "source": "CLIENT",
+        "fragment": "верну к марту"
+      },
+      "collateral": {
+        "value": [],
+        "confidence": 0,
+        "is_default": true,
+        "source": "DEFAULT",
+        "fragment": null
+      },
+      "urgency": {
+        "value": "NOT_URGENT",
+        "confidence": 0,
+        "is_default": true,
+        "source": "DEFAULT",
+        "fragment": null
+      },
+      "priority": {
+        "value": "NONE",
+        "confidence": 0,
+        "is_default": true,
+        "source": "DEFAULT",
+        "fragment": null
+      },
+      "regularity": {
+        "value": "ONE_TIME",
+        "confidence": 0,
+        "is_default": true,
+        "source": "DEFAULT",
+        "fragment": null
+      },
+      "comfortable_payment": {
+        "value": null,
+        "confidence": 0,
+        "is_default": true,
+        "source": "DEFAULT",
+        "fragment": null
+      }
+    },
+    "non_target": false,
+    "questions_asked": 0,
+    "proposed_amount": null,
+    "insight_id": null,
+    "created_at": "2026-10-14T09:00:00+07:00",
+    "updated_at": "2026-10-14T09:00:20+07:00"
+  },
+  "next": "QUESTION",
+  "question": {
+    "id": "7acbd316-07da-5b65-b0e8-6eb2c85f0224",
+    "field": "collateral",
+    "text": "Есть ли у вас залог?",
+    "number": 1,
+    "options": [
+      {
+        "value": [],
+        "label": "Нет"
+      },
+      {
+        "value": [
+          {
+            "kind": "EQUIPMENT",
+            "value": null
+          }
+        ],
+        "label": "Оборудование"
+      },
+      {
+        "value": [
+          {
+            "kind": "REAL_ESTATE",
+            "value": null
+          }
+        ],
+        "label": "Недвижимость"
+      }
+    ]
+  }
+}

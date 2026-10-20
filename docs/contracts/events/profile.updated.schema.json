@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.smart-credit.local/events/profile.updated.schema.json",
+  "title": "data события profile.updated",
+  "description": "ml-service → core-api. Профиль пересчитан; core-api пересчитывает активный подбор (REC-10).",
+  "type": "object",
+  "properties": {
+    "inn": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Inn"
+    },
+    "profile_version": {
+      "$ref": "../schemas/domain.schema.json#/$defs/Version"
+    },
+    "previous_version": {
+      "anyOf": [
+        {
+          "$ref": "../schemas/domain.schema.json#/$defs/Version"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "cause": {
+      "type": "string",
+      "enum": [
+        "BANK_DATA",
+        "DOCUMENT",
+        "FORECAST"
+      ]
+    },
+    "changed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "before": {},
+          "after": {}
+        },
+        "required": [
+          "path",
+          "before",
+          "after"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "inn",
+    "profile_version",
+    "previous_version",
+    "cause",
+    "changed"
+  ],
+  "additionalProperties": false
+}
