@@ -47,3 +47,22 @@
 - Проверено: `tools/validate.py` — ALL OK; `openapi-spec-validator` по трём файлам — OK; эндпоинты раздела 13.1 архитектуры сверены с контрактом скриптом.
 - Осталось: E01-10 (модели Pydantic и schemathesis) — после настройки монорепозитория E02-09; эталонные примеры DEMO-6 — при реализации.
 - Закрыта: 2026-10-21, коммит — см. историю git; пуш не подтверждён.
+
+## E02-09. Python-монорепозиторий
+
+- Взята в работу: 2026-10-21
+- Опорные разделы: ТЗ 9 (NFR-20, NFR-23); Архитектура 16, 21, 21.1; Кейс п. 2.1. Декомпозиция: `docs/E02-DECOMPOSITION.md`
+
+### Критические вопросы и ответы
+
+| # | Вопрос | Ответ разработчика | Влияние на реализацию |
+| --- | --- | --- | --- |
+| 1 | Как проверять расхождение `pyproject.toml` и `uv.lock`, раз CI не используется (E01-08)? | pre-commit + make check | Хук и цель `make lock-check` (`uv lock --check`); CI-конвейер — в E16 |
+| 2 | Lock «каждого сервиса» (NFR-20) или один workspace-lock (арх. 21)? | Один корневой `uv.lock` | Образы собираются через `--package <service>`; в ADR фиксируется эквивалентность по NFR-20 |
+
+### Итог
+
+- Сделано: корневой `pyproject.toml` (uv workspace: `services/*`, `libs/*`, `web`), `.python-version` 3.12, единый `uv.lock`; `pyproject.toml` на core-api, ml-service, doc-service, bank-sim, web; пакеты `libs/common` (настройки с `ServiceMode`, JSON-логи с `correlation_id`), `libs/contracts`, `libs/featurebuilder` (каркасы); `ruff`, `mypy` (strict для common/featurebuilder), `pytest`; `.pre-commit-config.yaml` (в т.ч. `uv lock --check`); `Makefile` (`make check`); тест границ `tests/test_workspace.py`; ADR 21 в архитектуре.
+- Проверено: `make check` — lock-check, ruff, ruff format, mypy, 14 тестов passed; `pre-commit run --all-files` — все хуки Passed; негативный случай: правка зависимости без `uv lock` → `uv lock --check` падает (exit 1). `security-audit` не применим (нет auth/документов/денег/LLM).
+- Осталось / отложено: Dockerfile и сборка через `--package` — E02-10; генерация моделей в `libs/contracts` и schemathesis — E01-10; README и THIRD_PARTY_NOTICES — E02-01.3; CI-конвейер — E16. Контракты и `*.md` исключены из хуков и ruff, чтобы не менять замороженные файлы.
+- Закрыта: 2026-10-21, коммит: см. историю git; пуш не подтверждён

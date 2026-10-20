@@ -1,0 +1,62 @@
+[project]
+name = "smart-credit-cabinet"
+version = "0.1.0"
+description = "Умный кредитный кабинет предпринимателя — монорепозиторий (uv workspace)"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "hypothesis>=6.112",
+    "pre-commit>=3.8",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["services/*", "libs/*", "web"]
+
+[tool.uv.sources]
+cabinet-common = { workspace = true }
+cabinet-contracts = { workspace = true }
+cabinet-featurebuilder = { workspace = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["docs/contracts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "ASYNC"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_ignores = true
+no_implicit_optional = true
+check_untyped_defs = true
+explicit_package_bases = true
+namespace_packages = true
+mypy_path = "libs/common/src:libs/contracts/src:libs/featurebuilder/src:services/core-api/src:services/ml-service/src:services/doc-service/src:services/bank-sim/src:web/src"
+
+[[tool.mypy.overrides]]
+module = ["cabinet_common.*", "cabinet_featurebuilder.*"]
+strict = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = "--import-mode=importlib"
+testpaths = ["libs", "services", "web", "tests"]
+markers = [
+    "unit: быстрые тесты без внешних зависимостей",
+    "integration: требуют поднятых хранилищ/брокера",
+    "e2e: сквозные тесты на Compose-стенде",
+]
