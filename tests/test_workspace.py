@@ -35,3 +35,16 @@ def test_services_do_not_depend_on_each_other() -> None:
 def test_python_version_pinned() -> None:
     assert (ROOT / ".python-version").read_text().strip() == "3.12"
     assert (ROOT / "uv.lock").exists()
+
+
+def test_repository_tree() -> None:
+    expected = [
+        "services/core-api", "services/ml-service", "services/doc-service", "services/bank-sim",
+        "web", "config", "ml/generators", "ml/training", "ml/eval/recommendation",
+        "ml/eval/assistant", "ml/eval/models", "ml/model_cards", "kb", "fixtures/registry",
+        "fixtures/news", "deploy/compose", "deploy/observability", "docs/api",
+        "docs/data-model", "docs/tests", "docs/research", "docs/contracts",
+        "libs/common", "libs/contracts", "libs/featurebuilder",
+    ]  # fmt: skip
+    missing = [p for p in expected if not (ROOT / p).is_dir()]
+    assert not missing, missing

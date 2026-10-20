@@ -66,3 +66,22 @@
 - Проверено: `make check` — lock-check, ruff, ruff format, mypy, 14 тестов passed; `pre-commit run --all-files` — все хуки Passed; негативный случай: правка зависимости без `uv lock` → `uv lock --check` падает (exit 1). `security-audit` не применим (нет auth/документов/денег/LLM).
 - Осталось / отложено: Dockerfile и сборка через `--package` — E02-10; генерация моделей в `libs/contracts` и schemathesis — E01-10; README и THIRD_PARTY_NOTICES — E02-01.3; CI-конвейер — E16. Контракты и `*.md` исключены из хуков и ruff, чтобы не менять замороженные файлы.
 - Закрыта: 2026-10-21, коммит: см. историю git; пуш не подтверждён
+
+## E02-01. Структура монорепозитория
+
+- Взята в работу: 2026-10-21
+- Опорные разделы: ТЗ 9 (NFR-01, NFR-15); Архитектура 16, 21.1, 10; Кейс п. 2.1
+
+### Критические вопросы и ответы
+
+| # | Вопрос | Ответ разработчика | Влияние на реализацию |
+| --- | --- | --- | --- |
+| 1 | Контракты: `contracts/` (дерево арх. 16) или `docs/contracts/` (проект)? | Оставить `docs/contracts` | Дерево в архитектуре, раздел 16, исправляется на `docs/contracts/`; в README — тот же путь |
+| 2 | Глубина каркаса сервисов? | Каталоги + слои + /health | Подпакеты `api/app/domain/adapters`, `GET /health` на FastAPI в каждом сервисе и web, без бизнес-логики |
+
+### Итог
+
+- Сделано: дерево каталогов по разделам 16 и 21.1 (`config`, `ml/*`, `kb`, `fixtures/*`, `deploy/*`, `docs/{api,data-model,tests,research}`, `.gitkeep`); слои `api/app/domain/adapters`, `main.py` и `GET /health` во всех 4 сервисах и web через `cabinet_common.health.create_app`; `README.md` (быстрый старт, карта репозитория), заготовка `THIRD_PARTY_NOTICES`, `.dockerignore`, `.editorconfig`; в дереве архитектуры раздела 16 убран `contracts/` верхнего уровня (контракты в `docs/contracts/`).
+- Проверено: `make check` — lock-check, ruff, mypy, 20 тестов passed (в т.ч. тест наличия всего дерева и 5 тестов `/health`); `pre-commit run --all-files` без замечаний. `security-audit` не применим.
+- Осталось / отложено: наполнение `THIRD_PARTY_NOTICES` — по мере добавления зависимостей и в E17-02; healthcheck с проверкой БД/брокера — E02-02.9; предупреждение starlette про `httpx2` в тестах — разобрать при обновлении зависимостей.
+- Закрыта: 2026-10-21, коммит: см. историю git; пуш не подтверждён
