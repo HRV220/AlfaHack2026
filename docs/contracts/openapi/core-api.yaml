@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
   title: core-api — публичный API «Умного кредитного кабинета»
-  version: 1.0.0
+  version: 1.1.0
   description: |
-    Публичный API для web (кабинет клиента и панель андеррайтера). Требования — ТЗ 4.1, архитектура раздел 13.
+    Публичный API для web (кабинет клиента и панель андеррайтера). Требования — ТЗ 4.2, архитектура раздел 13.
 
     Соглашения:
     - Базовый путь `/api/v1`. Формат — JSON в UTF-8, имена полей — snake_case.
@@ -38,6 +38,8 @@ tags:
     description: Документы (DOC)
   - name: assistant
     description: Ассистент и обращения (AI)
+  - name: feed
+    description: Персонализированная лента (NEWS, S13)
   - name: events
     description: Поток событий для интерфейса
   - name: underwriter
@@ -118,7 +120,7 @@ paths:
               additionalProperties: false
               required: [code]
               properties:
-                code: {type: string, enum: [DC-1, DC-2, DC-3, DC-4, DC-5]}
+                code: {type: string, enum: [DC-1, DC-2, DC-3, DC-4, DC-5, DC-6]}
       responses:
         '200':
           description: Вход выполнен
@@ -175,6 +177,32 @@ paths:
         - $ref: '#/components/parameters/Csrf'
       responses:
         '204': {description: Сессия завершена}
+  /auth/applicant-role:
+    post:
+      tags: [auth]
+      operationId: setApplicantRole
+      summary: Роль заявителя и подтверждение полномочий (REG-09); без неё заявка не создаётся (APPLICANT_ROLE_REQUIRED)
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [role, authority_confirmed]
+              properties:
+                role: {$ref: '../schemas/domain.schema.json#/$defs/ApplicantRole'}
+                authority_confirmed: {const: true, description: Клиент подтвердил, что уполномочен действовать от имени компании}
+      responses:
+        '200':
+          description: Роль сохранена в журнале и сессии
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Session'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {$ref: '#/components/responses/ValidationError'}
 
   # ---------------- профиль и каталог ----------------
   /profile:
@@ -740,6 +768,109 @@ paths:
             application/json:
               schema: {$ref: '../schemas/domain.schema.json#/$defs/Application'}
         '409': {$ref: '#/components/responses/StatusConflict'}
+  /applications/{application_id}/clarification/reply:
+    post:
+      tags: [applications]
+      operationId: replyToClarification
+      summary: Ответ клиента на запрос уточнения (APP-09); заявка возвращается в MANUAL_REVIEW
+      description: |
+        Поля заявки клиент меняет через `PATCH /applications/{id}`, документы загружает через `POST …/documents`; здесь он
+        прикладывает текст и ссылки на загруженные документы и отправляет ответ. Если поля заявки менялись, запускается повторный скоринг (SC-04).
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [text, document_ids]
+              properties:
+                text: {type: [string, 'null'], maxLength: 2000}
+                document_ids:
+                  type: array
+                  maxItems: 5
+                  items: {$ref: '../schemas/domain.schema.json#/$defs/Uuid'}
+      responses:
+        '200':
+          description: Ответ отправлен
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Application'}
+        '409': {$ref: '#/components/responses/StatusConflict'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /applications/{application_id}/contract:
+    get:
+      tags: [applications]
+      operationId: getContract
+      summary: Образец договора из снимка решения; график платежей рассчитывает ml-service (APP-10, S12)
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Образец договора
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Contract'}
+        '409': {$ref: '#/components/responses/StatusConflict'}
+        '501': {$ref: '#/components/responses/FeatureDisabled'}
+  /applications/{application_id}/contract/code:
+    post:
+      tags: [applications]
+      operationId: requestContractCode
+      summary: Код для подписания — имитация SMS, показывается в интерфейсе (APP-11, S12)
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - $ref: '#/components/parameters/Csrf'
+      responses:
+        '200':
+          description: Код выдан; действует 5 минут
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [demo_code, expires_at]
+                properties:
+                  demo_code: {type: string, pattern: '^[0-9]{6}$'}
+                  expires_at: {$ref: '../schemas/domain.schema.json#/$defs/DateTime'}
+        '409': {$ref: '#/components/responses/StatusConflict'}
+        '501': {$ref: '#/components/responses/FeatureDisabled'}
+  /applications/{application_id}/contract/sign:
+    post:
+      tags: [applications]
+      operationId: signContract
+      summary: Подписать образец договора кодом — статус SIGNED; деньги не выдаются (APP-11, S12)
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code]
+              properties:
+                code: {type: string, pattern: '^[0-9]{6}$'}
+      responses:
+        '200':
+          description: Договор подписан
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Contract'}
+        '409': {$ref: '#/components/responses/StatusConflict'}
+        '422':
+          description: Неверный или просроченный код — CONTRACT_CODE_INVALID
+          content:
+            application/problem+json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
+        '501': {$ref: '#/components/responses/FeatureDisabled'}
   /applications/{application_id}/decision:
     get:
       tags: [applications]
@@ -1006,6 +1137,20 @@ paths:
             text/event-stream:
               schema: {type: string}
 
+  # ---------------- лента ----------------
+  /feed:
+    get:
+      tags: [feed]
+      operationId: getFeed
+      summary: Персонализированная лента клиента с причинами показа (NEWS-01…NEWS-03, S13)
+      responses:
+        '200':
+          description: До 10 материалов, порядок по NEWS-02
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Feed'}
+        '501': {$ref: '#/components/responses/FeatureDisabled'}
+
   # ---------------- андеррайтер ----------------
   /uw/queue:
     get:
@@ -1044,7 +1189,11 @@ paths:
     post:
       tags: [underwriter]
       operationId: uwDecide
-      summary: Решение с обязательным комментарием (UW-04)
+      summary: Решение с обязательным комментарием (UW-04); при APPROVE можно изменить сумму и срок (UW-06)
+      description: |
+        `amount` и `term_months` допустимы только при `APPROVE`: сумма не больше запрошенной и не меньше минимума продукта,
+        срок — в границах продукта. Ставку, платёж и переплату сервер получает от ml-service (`POST /terms/evaluate`, REC-05),
+        итог записывается в `underwriter.adjusted_terms` снимка решения. Замена продукта этим запросом невозможна.
       security:
         - session: [UNDERWRITER]
       parameters:
@@ -1061,6 +1210,8 @@ paths:
               properties:
                 decision: {type: string, enum: [APPROVE, DECLINE]}
                 comment: {type: string, minLength: 1, maxLength: 2000}
+                amount: {$ref: '../schemas/domain.schema.json#/$defs/Money'}
+                term_months: {type: integer, minimum: 1, maximum: 120}
       responses:
         '200':
           description: Решение сохранено в снимке
@@ -1069,6 +1220,42 @@ paths:
               schema: {$ref: '../schemas/domain.schema.json#/$defs/Decision'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '409': {$ref: '#/components/responses/StatusConflict'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /uw/applications/{application_id}/clarification:
+    post:
+      tags: [underwriter]
+      operationId: uwRequestClarification
+      summary: Запросить уточнение у клиента вместо решения — статус NEEDS_INFO (UW-05)
+      security:
+        - session: [UNDERWRITER]
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [type, text]
+              properties:
+                type: {$ref: '../schemas/domain.schema.json#/$defs/ClarificationType'}
+                document_type:
+                  description: Тип документа из чек-листа; обязателен для DOCUMENT и REPLACE_DOCUMENT
+                  anyOf:
+                    - $ref: '../schemas/domain.schema.json#/$defs/DocumentType'
+                    - type: 'null'
+                text: {type: string, minLength: 1, maxLength: 1000}
+      responses:
+        '200':
+          description: Запрос создан; клиент получает события application.status и clarification.requested
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/ClarificationRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/StatusConflict'}
+        '422': {$ref: '#/components/responses/ValidationError'}
   /uw/escalations/{escalation_id}/close:
     post:
       tags: [underwriter]
@@ -1153,9 +1340,14 @@ components:
     Session:
       type: object
       additionalProperties: false
-      required: [role, csrf_token, expires_at, company]
+      required: [role, csrf_token, expires_at, company, applicant_role]
       properties:
         role: {$ref: '../schemas/domain.schema.json#/$defs/Role'}
+        applicant_role:
+          description: Роль заявителя (REG-09); null, пока клиент её не выбрал, и для андеррайтера
+          anyOf:
+            - $ref: '../schemas/domain.schema.json#/$defs/ApplicantRoleSelection'
+            - type: 'null'
         csrf_token: {type: string}
         expires_at: {$ref: '../schemas/domain.schema.json#/$defs/DateTime'}
         company:
@@ -1168,12 +1360,12 @@ components:
       additionalProperties: false
       required: [code, inn, name, opf, description, scenario]
       properties:
-        code: {type: string, enum: [DC-1, DC-2, DC-3, DC-4, DC-5]}
+        code: {type: string, enum: [DC-1, DC-2, DC-3, DC-4, DC-5, DC-6]}
         inn: {$ref: '../schemas/domain.schema.json#/$defs/Inn'}
         name: {type: string}
         opf: {$ref: '../schemas/domain.schema.json#/$defs/Opf'}
         description: {type: string}
-        scenario: {type: string, enum: [DEMO-1, DEMO-2, DEMO-3, DEMO-4, DEMO-5]}
+        scenario: {type: string, enum: [DEMO-1, DEMO-2, DEMO-3, DEMO-4, DEMO-5, DEMO-6]}
   responses:
     InnInvalid:
       description: INN_INVALID — ИНН указан неверно (REG-03)

@@ -173,6 +173,69 @@
       "type": "object",
       "properties": {
         "event": {
+          "const": "clarification.requested"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "application_id": {
+              "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+            },
+            "clarification": {
+              "$ref": "../schemas/domain.schema.json#/$defs/ClarificationRequest"
+            }
+          },
+          "required": [
+            "application_id",
+            "clarification"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "event",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Сотрудник запросил уточнение по заявке (UW-05)"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "feed.updated"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "new_item_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "../schemas/domain.schema.json#/$defs/Uuid"
+              }
+            },
+            "generated_at": {
+              "$ref": "../schemas/domain.schema.json#/$defs/DateTime"
+            }
+          },
+          "required": [
+            "new_item_ids",
+            "generated_at"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "event",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Лента пересчитана (NEWS-04, S13)"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {
           "const": "ping"
         },
         "data": {

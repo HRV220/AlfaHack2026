@@ -1,4 +1,4 @@
-"""Примеры по DEMO-1 (DC-1), рассчитанные по формулам ТЗ 4.1 (REC-02…REC-07), и примеры всех событий.
+"""Примеры по DEMO-1 (DC-1), рассчитанные по формулам ТЗ 4.2 (REC-02…REC-07), и примеры всех событий.
 PD — иллюстративные значения (модель ещё не обучена)."""
 import json, os, sys, uuid
 
@@ -122,10 +122,10 @@ decision_body = {
     "rate": 0.18, "term_months": 5, "payment": r2(p2_pay), "reason_codes": [],
     "shap_top10": byc["P2"]["shap_top"], "features": [
         {"name": "inflow_avg_m6", "value": inflow6, "source": "BANK_DEMO"},
-        {"name": "business_age_months", "value": 61, "source": "EGRUL"},
+        {"name": "business_age_months", "value": 61, "source": "REGISTRY"},
         {"name": "debt_load", "value": 0.023, "source": "BANK_DEMO"}],
     "review_triggers": [], "recommendation_id": recommendation["id"], "versions": VERS, "decided_at": "2026-10-14T09:03:05+07:00"}
-save("decision.DEMO-1.json", dict(decision_body, id=U("dec"), final_outcome="APPROVED", underwriter=None))
+save("decision.DEMO-1.json", dict(decision_body, id=U("dec"), final_outcome="APPROVED", underwriter=None, clarifications=[]))
 
 # ---- события ----
 def env(topic, source, subject, data, n):

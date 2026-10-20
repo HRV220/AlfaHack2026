@@ -137,6 +137,8 @@ sse_set("stream-events", "События общего потока GET /events/s
         "recommendation_id": d("Uuid"), "previous_id": d("Uuid"),
         "changes": {"type": "array", "items": obj({"field": {"type": "string", "description": "best_product_code, amount_available, chance"}, "before": {}, "after": {}}, ["field", "before", "after"])},
         "message": {"type": "string", "description": "Текст для клиента: «Доступная сумма выросла с X до Y ₽»"}}, ["recommendation_id", "previous_id", "changes", "message"])),
+    ("clarification.requested", "Сотрудник запросил уточнение по заявке (UW-05)", obj({"application_id": d("Uuid"), "clarification": d("ClarificationRequest")}, ["application_id", "clarification"])),
+    ("feed.updated", "Лента пересчитана (NEWS-04, S13)", obj({"new_item_ids": {"type": "array", "items": d("Uuid")}, "generated_at": d("DateTime")}, ["new_item_ids", "generated_at"])),
     ("ping", "Поддержание соединения раз в 15 с", obj({"at": d("DateTime")}, ["at"])),
 ])
 print("events ok")

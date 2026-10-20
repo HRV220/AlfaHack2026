@@ -42,7 +42,7 @@
     {
       "name": "business_age_months",
       "value": 61,
-      "source": "EGRUL"
+      "source": "REGISTRY"
     },
     {
       "name": "debt_load",
@@ -66,5 +66,6 @@
   "decided_at": "2026-10-14T09:03:05+07:00",
   "id": "1a1c6295-5b58-5ce1-83fa-c8888906504a",
   "final_outcome": "APPROVED",
-  "underwriter": null
+  "underwriter": null,
+  "clarifications": []
 }

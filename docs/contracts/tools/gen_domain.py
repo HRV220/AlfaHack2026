@@ -39,15 +39,15 @@ D["Date"] = S("Дата ISO 8601", format="date")
 D["Month"] = S("Месяц YYYY-MM", pattern="^[0-9]{4}-(0[1-9]|1[0-2])$")
 D["Version"] = S("Версия артефакта: конфигурации, модели, промпта", minLength=1, maxLength=64)
 
-# ---------- перечисления (ТЗ 4.1) ----------
+# ---------- перечисления (ТЗ 4.2) ----------
 D["Opf"] = enum(["IP", "LLC"], "ОПФ: IP — индивидуальный предприниматель, LLC — ООО (PRF-01)")
 D["IndustryGroup"] = enum([f"G{i:02d}" for i in range(1, 13)], "Отраслевая группа по таблице «ОКВЭД → группа» (ТЗ, раздел 7)")
 D["RegistryStatus"] = enum(["ACTIVE", "LIQUIDATING", "LIQUIDATED", "BANKRUPT", "REORGANIZING"],
                            "Статус по реестру: действующая, ликвидируется, ликвидирована, банкротство, реорганизация (PRF-04)")
-D["RegistryOrigin"] = enum(["DADATA", "FIXTURE", "SYNTHETIC"],
-                           "Откуда реквизиты (REG-06): DADATA — ответ DaData (в том числе из кэша), FIXTURE — сохранённый ответ из репозитория, SYNTHETIC — реестр недоступен")
-D["FieldSource"] = enum(["EGRUL", "BANK_DEMO", "DOCUMENT", "FORECAST", "CLIENT", "DEFAULT", "SYSTEM"],
-                        "Источник значения (REG-08): EGRUL — реестр; BANK_DEMO — демо-данные банка; DOCUMENT — распознанный документ; FORECAST — прогноз; CLIENT — ввод клиента; DEFAULT — значение по умолчанию (допущение); SYSTEM — расчёт системы")
+D["RegistryOrigin"] = enum(["SYNTHETIC_REGISTRY", "CACHE"],
+                           "Откуда реквизиты (REG-06): SYNTHETIC_REGISTRY — синтетический реестр (fixtures/registry), CACHE — кэш младше 24 ч")
+D["FieldSource"] = enum(["REGISTRY", "BANK_DEMO", "DOCUMENT", "FORECAST", "CLIENT", "DEFAULT", "SYSTEM"],
+                        "Источник значения (REG-08): REGISTRY — синтетический реестр («реестр — демо»); BANK_DEMO — демо-данные банка; DOCUMENT — распознанный документ; FORECAST — прогноз; CLIENT — ввод клиента; DEFAULT — значение по умолчанию (допущение); SYSTEM — расчёт системы")
 D["Goal"] = enum(["CASH_GAP", "PURCHASE", "SEASONAL", "EQUIPMENT", "RENOVATION", "CONTRACT", "OTHER"],
                  "Цель: кассовый разрыв; закупка товара или сырья; сезонная подготовка; оборудование и транспорт; ремонт и расширение; исполнение контракта; другая бизнес-цель")
 D["Urgency"] = enum(["TODAY_TOMORROW", "WITHIN_WEEK", "NOT_URGENT"], "Срочность: сегодня–завтра; в течение недели; не срочно")
@@ -76,8 +76,8 @@ D["ReasonCode"] = enum([
     "Код причины из справочника ТЗ, раздел 5.4")
 D["ReasonGroup"] = enum(["STOP", "ELIGIBILITY", "PD_FACTOR", "LIMIT", "DOCUMENT"], "Группа кода причины")
 D["ApplicationStatus"] = enum(
-    ["DRAFT", "SUBMITTED", "DOCUMENTS_PARSING", "CHECKING", "MANUAL_REVIEW", "APPROVED", "APPROVED_REDUCED", "DECLINED", "ACCEPTED"],
-    "Статус заявки (ТЗ, раздел 6): черновик, подана, документы распознаются, проверка, доп. проверка, одобрено, одобрено на меньшую сумму, отказ, условия приняты")
+    ["DRAFT", "SUBMITTED", "DOCUMENTS_PARSING", "CHECKING", "MANUAL_REVIEW", "NEEDS_INFO", "APPROVED", "APPROVED_REDUCED", "DECLINED", "ACCEPTED", "SIGNED"],
+    "Статус заявки (ТЗ, раздел 6): черновик, подана, документы распознаются, проверка, доп. проверка, требуется уточнение (UW-05), одобрено, одобрено на меньшую сумму, отказ, условия приняты, договор подписан (S12)")
 D["DecisionOutcome"] = enum(["APPROVED", "APPROVED_REDUCED", "MANUAL_REVIEW", "DECLINED"], "Итог скоринга (SC-04)")
 D["DocumentType"] = enum(["D1_OTHER_BANK_STATEMENT", "D2_GUARANTOR_FORM", "D3_FINANCIAL_STATEMENTS", "D4_ESTIMATE_OR_INVOICE", "D5_COLLATERAL_DOCS"],
                          "Тип документа по чек-листу (ТЗ, раздел 4.3)")
@@ -98,13 +98,21 @@ D["EscalationReason"] = enum(["USER_REQUEST", "COMPLAINT", "NO_DATA", "NON_TARGE
 D["NeedField"] = enum(["goal", "amount", "term_months", "collateral", "urgency", "priority", "regularity", "comfortable_payment"],
                       "Поле потребности (ТЗ 4.2), порядок = порядок вопросов при равенстве")
 D["NeedOrigin"] = enum(["TEXT", "FORM", "FORECAST"], "Откуда потребность: текст клиента, структурированная форма, прогноз разрыва")
+D["ApplicantRole"] = enum(["OWNER", "CEO", "CFO_OR_ACCOUNTANT", "FINANCE_MANAGER", "BANK_PRODUCTS_EMPLOYEE", "AUTHORIZED_EMPLOYEE"],
+                          "Роль заявителя (REG-09): собственник; генеральный директор; финансовый директор или бухгалтер; сотрудник по финансированию; сотрудник, работающий с банковскими продуктами; иной уполномоченный сотрудник")
+D["ClarificationType"] = enum(["INFO", "DOCUMENT", "REPLACE_DOCUMENT"],
+                              "Тип запроса уточнения (UW-05): уточнить сведения, загрузить документ, заменить документ")
+D["FeedItemType"] = enum(["NEWS", "TIP", "TAX_CALENDAR", "SUPPORT_MEASURE", "PRODUCT"],
+                         "Тип материала ленты (NEWS-01): новость, подсказка, налоговый календарь, мера поддержки, о продукте")
+D["FeedReasonKind"] = enum(["INDUSTRY", "OPF", "BUSINESS_AGE", "GOAL", "PRODUCT", "APPLICATION_STATUS", "GAP", "FRESHNESS"],
+                           "Признак, по которому материал показан клиенту (NEWS-02, NEWS-03)")
 D["NeedNext"] = enum(["QUESTION", "READY", "NON_TARGET"], "Что дальше после обработки потребности")
 D["RecommendationTrigger"] = enum(["CLIENT", "FORECAST", "PROFILE_UPDATED", "NEED_EDITED"], "Почему выполнен подбор")
 D["ErrorCode"] = enum([
     "INN_INVALID", "COMPANY_NOT_FOUND", "UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND", "VALIDATION_ERROR",
     "STATUS_CONFLICT", "IDEMPOTENCY_CONFLICT", "CHECKLIST_INCOMPLETE", "CONSENT_REQUIRED", "CONSENT_CODE_INVALID",
     "FILE_TYPE_NOT_ALLOWED", "FILE_TOO_LARGE", "FILE_INFECTED", "FILE_MACRO", "RATE_LIMITED", "LLM_UNAVAILABLE",
-    "FEATURE_DISABLED", "INTERNAL"], "Машинный код ошибки")
+    "FEATURE_DISABLED", "APPLICANT_ROLE_REQUIRED", "CONTRACT_CODE_INVALID", "INTERNAL"], "Машинный код ошибки")
 
 # ---------- ошибки ----------
 D["Problem"] = obj({
@@ -337,6 +345,47 @@ D["Document"] = obj({
 }, ["id", "application_id", "type", "filename", "mime", "size_bytes", "status", "reject_reason", "parse_result", "edits",
     "uploaded_at", "updated_at"], "Документ заявки")
 
+# ---------- роль заявителя, уточнение, договор, лента (редакция 4.2) ----------
+D["ApplicantRoleSelection"] = obj({"role": ref("ApplicantRole"), "authority_confirmed": {"const": True, "description": "Клиент подтвердил, что уполномочен действовать от имени компании"},
+                                   "at": ref("DateTime")}, ["role", "authority_confirmed", "at"], "Роль заявителя и подтверждение полномочий (REG-09)")
+D["ClarificationReply"] = obj({
+    "text": nullable(S(maxLength=2000)), "document_ids": arr(ref("Uuid"), maxItems=5), "changed_fields": arr(S("Поле заявки, изменённое в ответе")),
+    "answered_at": ref("DateTime"),
+}, ["text", "document_ids", "changed_fields", "answered_at"], "Ответ клиента на запрос уточнения (APP-09)")
+D["ClarificationRequest"] = obj({
+    "id": ref("Uuid"), "application_id": ref("Uuid"), "type": ref("ClarificationType"),
+    "document_type": nullable(ref("DocumentType")), "text": S("Текст запроса от сотрудника", minLength=1, maxLength=1000),
+    "status": enum(["OPEN", "ANSWERED"], "Статус запроса"), "requested_by": S("Логин сотрудника"),
+    "created_at": ref("DateTime"), "reply": nullable(ref("ClarificationReply")),
+}, ["id", "application_id", "type", "document_type", "text", "status", "requested_by", "created_at", "reply"], "Запрос уточнения (UW-05)")
+D["AdjustedTerms"] = obj({
+    "amount": ref("Money"), "term_months": I(minimum=1), "rate": ref("Rate"), "payment": ref("Money"), "overpayment": ref("Money"),
+}, ["amount", "term_months", "rate", "payment", "overpayment"], "Условия, изменённые сотрудником при одобрении (UW-06); платёж и переплата пересчитаны по REC-05")
+D["TermsEvaluation"] = obj({
+    "product_code": ref("ProductCode"), "amount": ref("Money"), "term_months": I(minimum=1), "rate": ref("Rate"),
+    "payment": ref("Money"), "overpayment": ref("Money"), "pd": ref("Probability"), "grade": ref("Grade"),
+    "schedule": arr(ref("PaymentScheduleItem")),
+}, ["product_code", "amount", "term_months", "rate", "payment", "overpayment", "pd", "grade", "schedule"],
+    "Расчёт условий по REC-02–REC-05 для заданных суммы и срока: используется для изменения условий сотрудником (UW-06) и для образца договора (APP-10); формулы только в ml-service")
+D["PaymentScheduleItem"] = obj({
+    "n": I(minimum=1), "date": ref("Date"), "principal": ref("Money"), "interest": ref("Money"), "payment": ref("Money"), "balance": ref("Money"),
+}, ["n", "date", "principal", "interest", "payment", "balance"], "Строка графика платежей")
+D["Contract"] = obj({
+    "application_id": ref("Uuid"), "product_code": ref("ProductCode"), "amount": ref("Money"), "term_months": I(minimum=1),
+    "rate": ref("Rate"), "payment": ref("Money"), "overpayment": ref("Money"), "schedule": arr(ref("PaymentScheduleItem")),
+    "disclaimer": {"const": "Образец, юридической силы не имеет"}, "signed": B(), "signed_at": nullable(ref("DateTime")),
+    "generated_at": ref("DateTime"),
+}, ["application_id", "product_code", "amount", "term_months", "rate", "payment", "overpayment", "schedule", "disclaimer",
+    "signed", "signed_at", "generated_at"], "Образец договора из снимка решения (APP-10, S12)")
+D["FeedReason"] = obj({"kind": ref("FeedReasonKind"), "label": S("Текст «Почему вы это видите»")}, ["kind", "label"])
+D["FeedItem"] = obj({
+    "id": ref("Uuid"), "type": ref("FeedItemType"), "title": S(maxLength=200), "text": S(maxLength=600),
+    "published_at": ref("Date"), "demo": {"const": True, "description": "Пометка «Материал демо»"},
+    "reasons": arr(ref("FeedReason"), minItems=1), "is_new": B("Карточка появилась после последнего пересчёта (NEWS-04)"),
+}, ["id", "type", "title", "text", "published_at", "demo", "reasons", "is_new"], "Материал персонализированной ленты (NEWS-01, S13)")
+D["Feed"] = obj({"items": arr(ref("FeedItem"), maxItems=10), "generated_at": ref("DateTime"), "weights_version": ref("Version")},
+                ["items", "generated_at", "weights_version"], "Лента клиента (NEWS-01, S13)")
+
 # ---------- заявка ----------
 D["ChecklistItem"] = obj({"document_type": ref("DocumentType"), "required": B(), "recommended": B(),
                           "document_ids": arr(ref("Uuid")), "done": B("Есть документ со статусом ACCEPTED или PARSED")},
@@ -350,6 +399,7 @@ D["ApplicationParams"] = obj({
 D["Application"] = obj({
     "id": ref("Uuid"), "version": I(minimum=1), "status": ref("ApplicationStatus"), "inn": ref("Inn"),
     "recommendation_id": ref("Uuid"), "params": ref("ApplicationParams"),
+    "applicant_role": nullable(ref("ApplicantRoleSelection")), "clarification": nullable(ref("ClarificationRequest")),
     "phone": nullable(S(pattern="^\\+7[0-9]{10}$")), "email": nullable(S(format="email")),
     "company": ref("CompanyPreview"),
     "prefilled_fields": arr(enum(["product_code", "amount", "term_months", "goal", "collateral", "phone", "email"], "Поле APP-01"),
@@ -358,7 +408,7 @@ D["Application"] = obj({
     "status_text": S("Что происходит (таблица статусов ТЗ, раздел 6)"), "next_step_text": S("Что нужно от клиента"),
     "decision_id": nullable(ref("Uuid")), "previous_version_id": nullable(ref("Uuid")),
     "created_at": ref("DateTime"), "updated_at": ref("DateTime"), "submitted_at": nullable(ref("DateTime")),
-}, ["id", "version", "status", "inn", "recommendation_id", "params", "phone", "email", "company", "prefilled_fields",
+}, ["id", "version", "status", "inn", "recommendation_id", "params", "applicant_role", "clarification", "phone", "email", "company", "prefilled_fields",
     "checklist", "consent", "status_text", "next_step_text", "decision_id", "previous_version_id", "created_at", "updated_at",
     "submitted_at"], "Заявка")
 D["ApplicationPatch"] = obj({
@@ -369,7 +419,9 @@ D["ApplicationPatch"] = obj({
 # ---------- решение ----------
 D["FeatureValue"] = obj({"name": S(), "value": {"description": "Значение"}, "source": ref("FieldSource")}, ["name", "value", "source"])
 D["UnderwriterDecision"] = obj({"decision": enum(["APPROVE", "DECLINE"], "Решение"), "comment": S(minLength=1, maxLength=2000),
-                                "user": S(), "at": ref("DateTime")}, ["decision", "comment", "user", "at"])
+                                "user": S(), "at": ref("DateTime"),
+                                "adjusted_terms": nullable(ref("AdjustedTerms"))}, ["decision", "comment", "user", "at", "adjusted_terms"],
+                               "Решение андеррайтера; adjusted_terms — условия, изменённые при одобрении (UW-06), иначе null")
 D["DecisionBody"] = obj({
     "application_id": ref("Uuid"), "application_version": I(minimum=1), "inn": ref("Inn"),
     "outcome": ref("DecisionOutcome"), "stop_reason": nullable(ref("ReasonCode")),
@@ -385,13 +437,15 @@ D["DecisionBody"] = obj({
 D["Decision"] = extend("DecisionBody", {
     "id": ref("Uuid"), "final_outcome": enum(["APPROVED", "APPROVED_REDUCED", "MANUAL_REVIEW", "DECLINED"], "Итог с учётом решения андеррайтера"),
     "underwriter": nullable(ref("UnderwriterDecision")),
-}, ["id", "final_outcome", "underwriter"], "Снимок решения (SC-07) с решением андеррайтера (UW-04)")
+    "clarifications": arr(ref("ClarificationRequest"), description="Запросы уточнения и ответы клиента по заявке (SC-07, UW-05)"),
+}, ["id", "final_outcome", "underwriter", "clarifications"], "Снимок решения (SC-07) с решением андеррайтера (UW-04)")
 D["ClientDecisionView"] = obj({
     "application_id": ref("Uuid"), "status": ref("ApplicationStatus"), "amount_requested": ref("Money"),
     "amount_approved": nullable(ref("Money")), "rate": nullable(ref("Rate")), "term_months": I(minimum=1),
+    "term_requested": I(minimum=1), "changed_by_bank": B("Сумма или срок изменены банком относительно запрошенного (UW-06)"),
     "payment": nullable(ref("Money")), "reasons": arr(ref("ReasonCodeEntry")),
-    "actions": arr(enum(["ACCEPT", "WHAT_IF", "CONTACT_STAFF"], "Доступное действие (APP-06)")), "decided_at": ref("DateTime"),
-}, ["application_id", "status", "amount_requested", "amount_approved", "rate", "term_months", "payment", "reasons", "actions", "decided_at"],
+    "actions": arr(enum(["ACCEPT", "WHAT_IF", "CONTACT_STAFF", "SIGN_CONTRACT"], "Доступное действие (APP-06, APP-11)")), "decided_at": ref("DateTime"),
+}, ["application_id", "status", "amount_requested", "amount_approved", "rate", "term_months", "term_requested", "changed_by_bank", "payment", "reasons", "actions", "decided_at"],
     "Решение для клиента: без PD и SHAP")
 
 # ---------- денежный поток ----------
@@ -444,12 +498,14 @@ D["Discrepancy"] = obj({
 D["UwQueueItem"] = obj({
     "kind": enum(["APPLICATION", "ESCALATION"], "Тип элемента очереди"), "id": ref("Uuid"), "inn": ref("Inn"),
     "company_name": S(), "title": S("Продукт и сумма или причина обращения"), "since": ref("DateTime"),
-}, ["kind", "id", "inn", "company_name", "title", "since"], "Элемент очереди UW-01")
+    "has_client_reply": B("Заявка вернулась после ответа на уточнение (APP-09)"),
+}, ["kind", "id", "inn", "company_name", "title", "since", "has_client_reply"], "Элемент очереди UW-01")
 D["UwCard"] = obj({
     "application": ref("Application"), "need": ref("Need"), "recommendation": ref("Recommendation"),
     "decision": ref("Decision"), "profile": ref("Profile"), "forecast": nullable(ref("Forecast")),
     "discrepancies": arr(ref("Discrepancy")), "documents": arr(ref("Document")),
-}, ["application", "need", "recommendation", "decision", "profile", "forecast", "discrepancies", "documents"], "Карточка андеррайтера (UW-02)")
+    "applicant_role": nullable(ref("ApplicantRoleSelection")), "clarifications": arr(ref("ClarificationRequest")),
+}, ["application", "need", "recommendation", "decision", "profile", "forecast", "discrepancies", "documents", "applicant_role", "clarifications"], "Карточка андеррайтера (UW-02)")
 
 # ---------- банк ----------
 D["Account"] = obj({"id": ref("Uuid"), "inn": ref("Inn"), "number": S(pattern="^[0-9]{20}$"), "opened_at": ref("Date"),
@@ -468,7 +524,7 @@ D["FraudFlag"] = obj({"inn": ref("Inn"), "flag": B()}, ["inn", "flag"])
 doc = {"$schema": "https://json-schema.org/draft/2020-12/schema",
        "$id": "https://contracts.smart-credit.local/schemas/domain.schema.json",
        "title": "Доменные схемы «Умного кредитного кабинета»",
-       "description": "Общие схемы для OpenAPI и событий. Источник требований — ТЗ 4.1. Версия контрактов 1.0.0.",
+       "description": "Общие схемы для OpenAPI и событий. Источник требований — ТЗ 4.2. Версия контрактов 1.1.0.",
        "$defs": D}
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 json.dump(doc, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, indent=2)

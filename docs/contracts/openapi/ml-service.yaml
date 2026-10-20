@@ -180,6 +180,37 @@ paths:
           content:
             application/json:
               schema: {$ref: '../schemas/domain.schema.json#/$defs/WhatIfResult'}
+  /terms/evaluate:
+    post:
+      operationId: termsEvaluate
+      summary: Расчёт условий для заданных суммы и срока — ставка, платёж, переплата, PD, график (UW-06, APP-10); p95 ≤ 100 мс
+      description: |
+        Те же формулы REC-02–REC-05 и та же PD-модель, что в подборе и решении (РШ-2). Сумма и срок должны лежать
+        в границах продукта, иначе 422 VALIDATION_ERROR. Не зависит от расширения S1 и доступен всегда.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [inn, product_code, amount, term_months]
+              properties:
+                inn: {$ref: '../schemas/domain.schema.json#/$defs/Inn'}
+                product_code: {$ref: '../schemas/domain.schema.json#/$defs/ProductCode'}
+                amount: {$ref: '../schemas/domain.schema.json#/$defs/Money'}
+                term_months: {type: integer, minimum: 1}
+      responses:
+        '200':
+          description: Условия
+          content:
+            application/json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/TermsEvaluation'}
+        '422':
+          description: VALIDATION_ERROR — сумма или срок вне границ продукта
+          content:
+            application/problem+json:
+              schema: {$ref: '../schemas/domain.schema.json#/$defs/Problem'}
   /what-if/evaluate:
     post:
       operationId: whatIfEvaluate

@@ -51,7 +51,7 @@
         {
           "name": "business_age_months",
           "value": 61,
-          "source": "EGRUL"
+          "source": "REGISTRY"
         },
         {
           "name": "debt_load",

@@ -1,6 +1,6 @@
 # Контракт API и схемы событий — «Умный кредитный кабинет предпринимателя»
 
-Версия контракта 1.0.0. Основание: ТЗ 4.1 и архитектура MVP (разделы 8–13).
+Версия контракта 1.1.0. Основание: бизнес-требования кейса, ТЗ 4.2 и архитектура MVP (разделы 7–13, 21). Изменения относительно 1.0.0 — раздел 9.
 Контракт — единственный источник правды для Frontend, Backend и DS/ML: любое поле, которого нет здесь, в API не передаётся.
 Язык реализации сервисов контракт не задаёт; по этим файлам можно сгенерировать клиентов, серверные заглушки и мок-сервер.
 
@@ -8,9 +8,9 @@
 
 | Папка / файл | Что внутри | Кто использует |
 |---|---|---|
-| `schemas/domain.schema.json` | 108 общих определений (`$defs`): перечисления, сущности, ошибки. На них ссылаются все остальные файлы | все |
-| `openapi/core-api.yaml` | Публичный API кабинета и панели андеррайтера, 50 операций | Frontend ↔ core-api |
-| `openapi/ml-service.yaml` | Внутренний API расчётов, 11 операций | core-api → ml-service |
+| `schemas/domain.schema.json` | 122 общих определения (`$defs`): перечисления, сущности, ошибки. На них ссылаются все остальные файлы | все |
+| `openapi/core-api.yaml` | Публичный API кабинета и панели андеррайтера, 57 операций | Frontend ↔ core-api |
+| `openapi/ml-service.yaml` | Внутренний API расчётов, 12 операций | core-api → ml-service |
 | `openapi/bank-sim.yaml` | Имитация АБС, РКО, БКИ, антифрода, 5 операций | core-api, ml-service → bank-sim |
 | `events/envelope.schema.json` | Конверт любого события брокера | все продюсеры и консьюмеры |
 | `events/<topic>.schema.json` | Схема поля `data` для каждого из 11 топиков | см. таблицу 4 |
@@ -29,7 +29,7 @@
 5. **Идентификаторы** — UUID v4; ИНН — 10 цифр (ЮЛ) или 12 цифр (ИП); коды продуктов `P1`…`P6`.
 6. **Аутентификация** — httpOnly-cookie `session` (JWT, 8 ч). Изменяющие запросы передают `X-CSRF-Token`, который выдаёт `GET /auth/me`.
 7. **Изоляция компании (NFR-13).** core-api берёт ИНН только из сессии. В пути и теле клиентских запросов ИНН принимается только при входе (`/registry/{inn}`, `/auth/inn-login`).
-8. **Ошибки** — `application/problem+json` по RFC 9457 с обязательным машинным полем `code` из перечисления `ErrorCode` (19 значений). Интерфейс выбирает текст по `code`, а не по `detail`.
+8. **Ошибки** — `application/problem+json` по RFC 9457 с обязательным машинным полем `code` из перечисления `ErrorCode` (21 значение). Интерфейс выбирает текст по `code`, а не по `detail`.
 9. **Идемпотентность.** Операции с заголовком `Idempotency-Key` при повторе с тем же ключом возвращают первый ответ. Тот же ключ с другим телом даёт `409 IDEMPOTENCY_CONFLICT`. Ключ хранится 24 ч.
 10. **Трассировка.** Каждый запрос и ответ несёт `traceparent` (W3C). Его trace id записывается в `correlation_id` всех событий, порождённых запросом.
 11. **Асинхронность.** Подача заявки (`POST /applications/{id}/submit`) отвечает `202`. Решение приходит в `GET /events/stream` событием `application.status` (SC-08: ≤ 60 с).
@@ -38,17 +38,19 @@
 
 | Группа | Операции | Требования ТЗ |
 |---|---|---|
-| Вход и реестр | `GET /registry/{inn}`, `POST /auth/inn-login`, `GET /demo/companies`, `POST /auth/demo-login`, `POST /auth/staff-login`, `GET /auth/me`, `POST /auth/logout` | REG-01…REG-07 |
+| Вход и реестр | `GET /registry/{inn}`, `POST /auth/inn-login`, `GET /demo/companies`, `POST /auth/demo-login`, `POST /auth/staff-login`, `GET /auth/me`, `POST /auth/logout`, `POST /auth/applicant-role` | REG-01…REG-07, REG-09 |
 | Профиль, каталог | `GET /profile`, `GET /products`, `GET /dictionaries/reason-codes` | REG-08, PRF-01…PRF-10, CAT-01, 5.4 |
 | Потребность | `POST /needs`, `GET /needs/{id}`, `PATCH /needs/{id}` | NEED-01…NEED-08 |
 | Подбор | `POST /recommendations`, `GET /recommendations/{id}`, `GET …/why-not/{product_code}` | REC-01…REC-17 |
 | «Что сделать» | `POST /recommendations/{id}/what-if`, `POST /what-if/evaluate`, `POST /applications/{id}/what-if`, `POST /applications/{id}/versions`, `POST /recommendations/{id}/applications` | WI-01…WI-08 |
 | Финансовый пульс | `GET /cashflow/summary`, `GET /cashflow/forecast`, `GET /insights`, `POST /insights/{id}/dismiss` | CF-01…CF-07 |
-| Заявка | `GET/POST /applications`, `GET/PATCH /applications/{id}`, `GET …/checklist`, `POST …/consent/request`, `POST …/consent/confirm`, `POST …/submit`, `POST …/accept`, `GET …/decision` | APP-01…APP-08, SC-08 |
+| Заявка | `GET/POST /applications`, `GET/PATCH /applications/{id}`, `GET …/checklist`, `POST …/consent/request`, `POST …/consent/confirm`, `POST …/submit`, `POST …/accept`, `GET …/decision`, `POST …/clarification/reply` | APP-01…APP-09, SC-08 |
+| Договор (S12) | `GET …/contract`, `POST …/contract/code`, `POST …/contract/sign` | APP-10, APP-11 |
+| Лента (S13) | `GET /feed` | NEWS-01…NEWS-05 |
 | Документы | `POST /applications/{id}/documents`, `GET/DELETE /documents/{id}`, `PATCH /documents/{id}/fields`, `GET /documents/{id}/content` | DOC-01…DOC-09 |
 | Ассистент | `POST /chat/sessions`, `GET /chat/sessions/{id}`, `POST /chat/sessions/{id}/messages` (SSE), `POST /chat/actions/{id}/confirm`, `POST /escalations` | AI-01…AI-12 |
 | Поток событий | `GET /events/stream` (SSE) | APP-05, CF-06, DOC-02, REC-10 |
-| Андеррайтер | `GET /uw/queue`, `GET /uw/applications/{id}`, `POST /uw/applications/{id}/decision`, `POST /uw/escalations/{id}/close` | UW-01…UW-04 |
+| Андеррайтер | `GET /uw/queue`, `GET /uw/applications/{id}`, `POST /uw/applications/{id}/decision` (в т.ч. изменённые сумма и срок), `POST /uw/applications/{id}/clarification`, `POST /uw/escalations/{id}/close` | UW-01…UW-06 |
 
 Сквозной сценарий DEMO-1 по вызовам:
 `POST /auth/demo-login` → `POST /needs {text}` → `PATCH /needs/{id} {answer}` (пока `next = ASK`) → `POST /recommendations` → `POST /applications {recommendation_id, product_code}` → `POST /applications/{id}/documents` → `POST …/consent/request` → `POST …/consent/confirm` → `POST …/submit` → событие `application.status` в `/events/stream` → `GET …/decision` → `POST …/accept`.
@@ -84,7 +86,7 @@
 | Поток | Типы событий |
 |---|---|
 | Ответ ассистента (`POST /chat/sessions/{id}/messages`) | `delta` — фрагмент текста; `tool` — вызов инструмента; `need` — обновлённая потребность; `question` — уточняющий вопрос; `recommendation` — снимок подбора; `action` — действие, ждущее подтверждения кнопкой; `escalation` — передача сотруднику; `done`; `error` |
-| Общий поток (`GET /events/stream`) | `application.status`, `insight.created`, `document.status`, `recommendation.updated`, `ping` каждые 15 с |
+| Общий поток (`GET /events/stream`) | `application.status`, `insight.created`, `document.status`, `recommendation.updated`, `clarification.requested`, `feed.updated`, `ping` каждые 15 с |
 
 При обрыве клиент переподключается с заголовком `Last-Event-ID`. Сервер повторяет события за последние 5 минут.
 
@@ -131,3 +133,23 @@ python3 -m openapi_spec_validator openapi/bank-sim.yaml
 3. Проверка командами выше. CI не пропускает изменение без зелёной проверки.
 4. Изменение версии: новое необязательное поле — минорная версия; удаление или переименование — мажорная (см. раздел 4, п. 5).
 5. Изменение согласуют владельцы затронутых сервисов (Frontend для core-api, DS/ML для ml-service и событий скоринга).
+
+## 9. Изменения 1.1.0 (ТЗ 4.2, бизнес-требования кейса)
+
+Схемы `data` событий брокера не менялись, топики остались на `schema_version 1.0.0`. В `ApplicationStatus` добавлены значения, которые консьюмеры обязаны терпеть как неизвестные. Два изменения ломающие относительно 1.0.0, но сервисов ещё нет: `RegistryOrigin` (`SYNTHETIC_REGISTRY`, `CACHE` вместо `DADATA`, `FIXTURE`, `SYNTHETIC`) и `FieldSource.EGRUL` → `REGISTRY` (реестр синтетический, РШ-6).
+
+| Область | Что изменилось | Требования |
+|---|---|---|
+| Статусы | `ApplicationStatus` + `NEEDS_INFO` (требуется уточнение), `SIGNED` (договор подписан, S12) | UW-05, APP-09, APP-11 |
+| Ошибки | `ErrorCode` + `APPLICANT_ROLE_REQUIRED`, `CONTRACT_CODE_INVALID` | REG-09, APP-11 |
+| Роль заявителя | `POST /auth/applicant-role`; шесть ролей (`ApplicantRole`); `Session.applicant_role`, `Application.applicant_role`, `UwCard.applicant_role` | REG-09 |
+| Уточнение | `POST /uw/applications/{id}/clarification`, `POST /applications/{id}/clarification/reply`; `ClarificationRequest`, `ClarificationReply`; `Application.clarification`, `Decision.clarifications`, `UwCard.clarifications`; `UwQueueItem.has_client_reply`; SSE `clarification.requested` | UW-05, APP-09 |
+| Изменение условий | `amount`, `term_months` в теле `POST /uw/applications/{id}/decision`; `UnderwriterDecision.adjusted_terms`; `ClientDecisionView.term_requested`, `changed_by_bank`; расчёт — `POST /terms/evaluate` в ml-service (`TermsEvaluation`) | UW-06, APP-06 |
+| Договор (S12) | `GET …/contract`, `POST …/contract/code`, `POST …/contract/sign`; `Contract`, `PaymentScheduleItem`; действие `SIGN_CONTRACT`; график платежей берётся из `POST /terms/evaluate` | APP-10, APP-11 |
+| Лента (S13) | `GET /feed`; `Feed`, `FeedItem`, `FeedReason`; SSE `feed.updated` | NEWS-01…NEWS-05 |
+| Демо | `DemoCompany.code` + `DC-6`, `scenario` + `DEMO-6` | DEMO-6 |
+
+Сценарий DEMO-6 по вызовам: `POST /auth/demo-login` (DC-6) → `POST /auth/applicant-role` → потребность и подбор как в DEMO-1 → `POST /applications` → `POST …/submit` → статус `MANUAL_REVIEW` → `POST /uw/applications/{id}/clarification` → событие `application.status` (`NEEDS_INFO`) → `POST …/documents` → `POST …/clarification/reply` → `POST /uw/applications/{id}/decision {APPROVE, term_months}` → `GET …/decision` (`changed_by_bank = true`) → `POST …/accept`; при S12 далее `POST …/contract/code` → `POST …/contract/sign`.
+
+Эталонных примеров для новых сущностей пока нет: `tools/gen_examples.py` покрывает только DEMO-1; примеры DEMO-6 добавляются вместе с реализацией.
+
