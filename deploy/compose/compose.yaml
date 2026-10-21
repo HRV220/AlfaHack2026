@@ -1,0 +1,57 @@
+# Профиль core (архитектура 16, NFR-01): пути в файле — от корня репозитория (--project-directory .):
+#   docker compose --project-directory . -f deploy/compose/compose.yaml
+#   --profile core up -d   (цели make up / make down). Переменные берутся из .env в корне; без него
+# работают значения по умолчанию для разработки. Теги образов зафиксированы (NFR-20), `latest` не используется.
+name: cabinet
+
+# --- Общие блоки ---------------------------------------------------------------------------
+x-logging: &logging
+  driver: json-file
+  options: {max-size: "10m", max-file: "3"}
+
+# Общие переменные прикладных сервисов; режим по умолчанию — проверяемая версия без ключей и сети
+x-app-env: &app-env
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  LLM_PROVIDER: ${LLM_PROVIDER:-local}
+  LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b-instruct-q4_K_M}
+  ASSISTANT_ENABLED: ${ASSISTANT_ENABLED:-true}
+  CHECKING_DELAY_SEC: ${CHECKING_DELAY_SEC:-5}
+  CONFIG_DIR: /app/config
+
+x-app-common: &app-common
+  restart: unless-stopped
+  logging: *logging
+  networks: [backend]
+  profiles: [core]
+  volumes:
+    - ./config:/app/config:ro
+
+# Образ каждого прикладного сервиса собирается из deploy/docker/Dockerfile.python (контекст — корень)
+x-core-api-image: &core-api-image
+  image: alfacase/core-api:dev
+  build:
+    context: .
+    dockerfile: deploy/docker/Dockerfile.python
+    args: {SERVICE: core-api, APP_MODULE: "core_api.main:app"}
+
+networks:
+  backend:
+    name: cabinet-backend
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
+  redpanda-data:
+  clamav-db:
+  ollama-models:
+  edge-certs:
+
+services:
+  # Заглушка init (E02-02.4): прикладные сервисы стартуют после неё. Миграции, топики, seed и
+  # регистрация моделей добавляются в E02-03, E02-04, E02-06 без изменения графа зависимостей.
+  init:
+    <<: [*app-common, *core-api-image]
+    restart: "no"
+    entrypoint: ["python", "-c", "print('init: nothing to do yet')"]
+    environment: *app-env

@@ -138,7 +138,7 @@ E02-08 (gpu, obs) — после приёмки core, Should-уровень (S)
 
 | ID | Подзадача | Оценка | Готово, когда | Статус |
 | --- | --- | --- | --- | --- |
-| E02-02.1 | `deploy/compose/compose.yaml`: сеть, тома, `profiles`, `x-` якоря (общие env, healthcheck, logging); корневой `.env.example` | M | `docker compose config` валиден | ⬜ не начато |
+| E02-02.1 | `deploy/compose/compose.yaml`: сеть, тома, `profiles`, `x-` якоря (общие env, healthcheck, logging); корневой `.env.example` | M | `docker compose config` валиден | ✅ выполнено (2026-10-21) |
 | E02-02.2 | Хранилища: PostgreSQL 16 + pgvector (образ `pgvector/pgvector:pg16`, фиксированный тег), Redis 7, MinIO (+ создание бакетов `documents`, `mlflow`) — с healthcheck | M | Healthy; бакеты создаются init-ом | ⬜ не начато |
 | E02-02.3 | Брокер: Redpanda (Kafka API + Schema Registry) и Redpanda Console, режим `dev-container`, ограничение памяти | M | Console открывается, Registry отвечает на `/subjects` | ⬜ не начато |
 | E02-02.4 | Сервисы приложения: `core-api` (api + relay + consumer как отдельные контейнеры одного образа), `ml-service` (api + consumer + relay), `doc-service` (consumer + relay), `bank-sim` (api), `web` — зависимости `depends_on: condition: service_healthy / service_completed_successfully` (init) | L | Порядок старта соответствует разделу 16 | ⬜ не начато |
@@ -148,7 +148,7 @@ E02-08 (gpu, obs) — после приёмки core, Should-уровень (S)
 | E02-02.8 | `mem_limit` на каждый контейнер; таблица лимитов в README; сумма вместе с LLM ≤ 14 ГБ (замер — день 2) | M | `docker stats` под нагрузкой не превышает лимиты; сумма проверяется скриптом по `compose config` | ⬜ не начато |
 | E02-02.9 | Healthcheck на каждый сервис (`/health` с проверкой зависимостей: БД, брокер, Redis) | M | `docker compose ps` — все `healthy` | ⬜ не начато |
 | E02-02.10 | Фиксация тегов образов (NFR-20), `.env.example` без секретов (только dev-значения-плейсхолдеры, генерация паролей при первом старте) | S | Нет `latest` в compose (grep) | ⬜ не начато |
-| E02-02.11 | Режим по умолчанию: `LLM_PROVIDER=local`, `LLM_MODEL`, `ASSISTANT_ENABLED`, `CHECKING_DELAY_SEC` | S | Переменные описаны в `.env.example` | ⬜ не начато |
+| E02-02.11 | Режим по умолчанию: `LLM_PROVIDER=local`, `LLM_MODEL`, `ASSISTANT_ENABLED`, `CHECKING_DELAY_SEC` | S | Переменные описаны в `.env.example` | ✅ выполнено (2026-10-21) |
 
 ## E02-07. Локальная LLM (DS/ML + Backend, M)
 

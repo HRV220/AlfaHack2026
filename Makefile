@@ -1,5 +1,5 @@
 COMPOSE_FILE ?= deploy/compose/compose.yaml
-COMPOSE = docker compose -f $(COMPOSE_FILE)
+COMPOSE = docker compose --project-directory . -f $(COMPOSE_FILE)
 
 .PHONY: sync lock-check lint format type test check up down compose-file-check
 
