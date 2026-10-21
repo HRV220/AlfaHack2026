@@ -1,0 +1,34 @@
+# Справочник reason codes с текстами для клиента (ТЗ SC-06, раздел 5.4; контракт ReasonCodeEntry).
+# `version` попадает в снимки как reason_codes. ЧЕРНОВИК текстов: правит Product; любая правка
+# текста поднимает version. В текстах нет чисел и порогов — их показывает интерфейс из данных (РШ-4).
+version: "1.0.0"
+reason_codes:
+  # --- Стоп-факторы
+  - {code: STOP_REGISTRY, group: STOP, client_text: "Компания не числится в реестре действующей, поэтому подбор кредита сейчас недоступен"}
+  - {code: STOP_FRAUD, group: STOP, client_text: "Проверку не удалось завершить дистанционно"}
+  - {code: STOP_OVERDUE, group: STOP, client_text: "За последний год по кредитам была длительная просрочка, поэтому мы не можем предложить кредит сейчас"}
+  - {code: STOP_YOUNG, group: STOP, client_text: "Бизнес работает слишком недолго, чтобы мы могли предложить кредит"}
+  # --- Допуск продукта
+  - {code: GOAL_MISMATCH, group: ELIGIBILITY, client_text: "Этот продукт не подходит для указанной цели кредита"}
+  - {code: AGE_BELOW_MIN, group: ELIGIBILITY, client_text: "Бизнес работает меньше, чем требуется для этого продукта"}
+  - {code: INFLOW_BELOW_MIN, group: ELIGIBILITY, client_text: "Средние поступления на счёт меньше, чем требуется для этого продукта"}
+  - {code: INFLOW_HISTORY_SHORT, group: ELIGIBILITY, client_text: "Поступления на счёт есть не во всех последних месяцах, а для этого продукта они нужны каждый месяц"}
+  - {code: INDUSTRY_NOT_IN_PROGRAM, group: ELIGIBILITY, client_text: "Отрасль вашего бизнеса не входит в условия этой программы"}
+  - {code: COLLATERAL_REQUIRED, group: ELIGIBILITY, client_text: "Для этого продукта нужен залог, а он не указан"}
+  - {code: AMOUNT_BELOW_MIN, group: ELIGIBILITY, client_text: "Нужная сумма меньше минимальной суммы этого продукта"}
+  - {code: CAPACITY_BELOW_MIN, group: ELIGIBILITY, client_text: "С учётом ваших доходов и текущих платежей по кредитам доступная сумма меньше минимальной для этого продукта"}
+  # --- Факторы PD
+  - {code: LOW_TURNOVER, group: PD_FACTOR, client_text: "Средние поступления на счёт невысокие"}
+  - {code: VOLATILE_TURNOVER, group: PD_FACTOR, client_text: "Поступления сильно меняются от месяца к месяцу, бывают месяцы с отрицательным денежным потоком"}
+  - {code: FALLING_TURNOVER, group: PD_FACTOR, client_text: "Поступления на счёт снижаются"}
+  - {code: HIGH_DEBT_LOAD, group: PD_FACTOR, client_text: "Высокая долговая нагрузка: много действующих кредитов или большие платежи по ним"}
+  - {code: PAST_OVERDUE, group: PD_FACTOR, client_text: "За последний год были просрочки по кредитам"}
+  - {code: LOW_CASH_RESERVE, group: PD_FACTOR, client_text: "Небольшой запас денег на счёте, бывают дни с отрицательным остатком"}
+  - {code: CUSTOMER_CONCENTRATION, group: PD_FACTOR, client_text: "Значительная часть выручки приходится на одного покупателя"}
+  - {code: YOUNG_BUSINESS, group: PD_FACTOR, client_text: "Бизнес работает относительно недолго"}
+  - {code: AMOUNT_HIGH_FOR_TURNOVER, group: PD_FACTOR, client_text: "Запрошенная сумма велика по сравнению с поступлениями на счёт"}
+  # --- Лимит
+  - {code: AMOUNT_ABOVE_LIMIT, group: LIMIT, client_text: "Нужная сумма больше доступной вам по платёжеспособности, поэтому предложена меньшая"}
+  # --- Документы
+  - {code: STATEMENT_NOT_VERIFIED, group: DOCUMENT, client_text: "Выписка не прошла проверку: загрузите актуальную выписку по счёту ещё раз"}
+  - {code: INN_MISMATCH, group: DOCUMENT, client_text: "ИНН владельца выписки не совпадает с ИНН вашей компании: загрузите выписку по счёту вашей компании"}
