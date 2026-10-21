@@ -1,7 +1,7 @@
 COMPOSE_FILE ?= deploy/compose/compose.yaml
 COMPOSE = docker compose --project-directory . -f $(COMPOSE_FILE)
 
-.PHONY: sync lock-check lint format type test check up down compose-file-check migrate migrate-test er-diagram
+.PHONY: sync lock-check lint format type test check up down compose-file-check migrate migrate-test er-diagram events-test
 
 sync:
 	uv sync --all-packages
@@ -47,3 +47,7 @@ migrate-test:
 
 er-diagram:
 	bash scripts/with_test_postgres.sh uv run python scripts/_er_run.py
+
+# Топики, схемы, outbox, релей и consumer на одноразовых PostgreSQL и Redpanda в Docker (E02-04).
+events-test:
+	bash scripts/with_test_postgres.sh bash scripts/with_test_redpanda.sh uv run pytest -m integration tests/test_events_broker.py tests/test_events_flow.py

@@ -1,9 +1,14 @@
-"""Контракт транзакционного outbox (архитектура, раздел 9). Реализация — E02-04."""
+"""Транзакционный outbox (архитектура, раздел 9): событие пишется вместе с изменением данных."""
 
+import json
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Any
 
 from pydantic import BaseModel
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from cabinet_common.events import EventValidator, build_envelope
 
 
 class OutboxRecord(BaseModel):
@@ -16,15 +21,33 @@ class OutboxRecord(BaseModel):
     attempts: int = 0
 
 
-class OutboxWriter(Protocol):
-    async def emit(self, session: Any, topic: str, key: str, payload: dict[str, Any]) -> None:
-        """Пишет событие в той же транзакции, что и изменение: откат транзакции убирает событие."""
-        ...
+INSERT_OUTBOX = text(
+    "INSERT INTO outbox (id, topic, key, payload) "
+    "VALUES (CAST(:id AS uuid), :topic, :key, CAST(:payload AS jsonb))"
+)
 
 
-class OutboxReader(Protocol):
-    async def fetch_unpublished(self, limit: int) -> list[OutboxRecord]:
-        """Выбирает пачку неопубликованных записей (`FOR UPDATE SKIP LOCKED`) для релея."""
-        ...
+class OutboxWriter:
+    def __init__(self, validator: EventValidator) -> None:
+        self._validator = validator
 
-    async def mark_published(self, record_id: str) -> None: ...
+    async def emit(
+        self, session: AsyncSession, topic: str, key: str, payload: dict[str, Any]
+    ) -> str:
+        """Кладёт событие в `outbox` в транзакции `session`; откат транзакции убирает и событие.
+
+        `payload` — это `data` события; конверт собирается здесь и проверяется до записи.
+        Возвращает `event_id` (он же `outbox.id`).
+        """
+        event = build_envelope(self._validator.topics.get(topic), key, payload)
+        self._validator.validate(event)
+        await session.execute(
+            INSERT_OUTBOX,
+            {
+                "id": event["event_id"],
+                "topic": topic,
+                "key": key,
+                "payload": json.dumps(event, ensure_ascii=False),
+            },
+        )
+        return str(event["event_id"])

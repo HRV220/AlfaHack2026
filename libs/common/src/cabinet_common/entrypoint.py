@@ -1,26 +1,15 @@
-"""Точка входа образа: режим из SERVICE_MODE (api | consumer | relay), арх. раздел 21."""
+"""Точка входа образа: режим из SERVICE_MODE (api | consumer | relay), арх. раздел 21.
+
+Режимы consumer и relay запускает `cabinet_common.worker` (E02-04).
+"""
 
 import os
-import signal
 import sys
-import threading
 import urllib.request
-
-import structlog
 
 from cabinet_common.logging import configure_logging
 from cabinet_common.settings import BaseServiceSettings, ServiceMode
-
-
-def run_idle(mode: ServiceMode) -> None:
-    """Заглушка consumer/relay до E02-04: логирует запуск и ждёт сигнала остановки."""
-    log = structlog.get_logger()
-    stop = threading.Event()
-    for sig in (signal.SIGTERM, signal.SIGINT):
-        signal.signal(sig, lambda *_: stop.set())
-    log.info("worker_started", mode=mode.value, stub=True)
-    stop.wait()
-    log.info("worker_stopped", mode=mode.value)
+from cabinet_common.worker import run_worker
 
 
 def healthcheck(port: int) -> int:
@@ -48,7 +37,7 @@ def main(argv: list[str] | None = None) -> int:
         cmd = ["uvicorn", app_module, "--host", host, "--port", str(port)]
         os.execvp(cmd[0], cmd)  # noqa: S606
         return 0
-    run_idle(settings.service_mode)
+    run_worker(settings)
     return 0
 
 

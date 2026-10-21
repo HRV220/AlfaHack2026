@@ -6,4 +6,9 @@ __pycache__/
 .ruff_cache/
 .pytest_cache/
 .env
-docs/
+docs/*
+# Контракты событий нужны в образе: схемы для валидации и реестр топиков (E02-04)
+!docs/contracts/
+docs/contracts/*
+!docs/contracts/events/
+!docs/contracts/schemas/

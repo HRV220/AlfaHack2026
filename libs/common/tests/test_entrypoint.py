@@ -25,9 +25,9 @@ def test_api_mode_execs_uvicorn(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.parametrize("mode", ["consumer", "relay"])
-def test_worker_modes_run_idle_stub(monkeypatch: pytest.MonkeyPatch, mode: str) -> None:
+def test_worker_modes_run_worker(monkeypatch: pytest.MonkeyPatch, mode: str) -> None:
     seen: list[str] = []
     monkeypatch.setenv("SERVICE_MODE", mode)
-    monkeypatch.setattr(entrypoint, "run_idle", lambda m: seen.append(m.value))
+    monkeypatch.setattr(entrypoint, "run_worker", lambda s: seen.append(s.service_mode.value))
     assert entrypoint.main([]) == 0
     assert seen == [mode]

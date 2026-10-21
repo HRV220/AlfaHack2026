@@ -26,10 +26,14 @@ RUN if [ -n "${APT_PACKAGES}" ]; then \
     && groupadd --gid 10001 app \
     && useradd --uid 10001 --gid app --no-create-home --shell /usr/sbin/nologin app
 COPY --from=builder /app/.venv /app/.venv
+# Контракт событий — единственный источник схем (docs/contracts), без копии в репозитории
+COPY docs/contracts/events /app/contracts/events
+COPY docs/contracts/schemas /app/contracts/schemas
 ENV PATH="/app/.venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     APP_MODULE=${APP_MODULE} \
+    CONTRACTS_DIR=/app/contracts \
     SERVICE_MODE=api \
     PORT=8000
 USER app

@@ -15,7 +15,7 @@
 | E02-10 Базовые образы | ✅ выполнено (2026-10-21) | 5 из 5 | Сборка пяти образов, `docker run … id`, три режима проверены |
 | E02-11 Каркас web | ✅ выполнено (2026-10-21) | 7 из 7 | `pytest web/` — 24 теста; ширины 360 / 768 / 1280 px без горизонтального скролла проверены в headless Chrome |
 | E02-03 Миграции БД | ✅ выполнено (2026-10-21) | 11 из 11 | Пять Alembic-сред, `make migrate-test` (24 теста), `make er-diagram`, ADR 24 |
-| E02-04 Топики, outbox, DLQ | ⬜ не начато | 0 из 9 | — |
+| E02-04 Топики, outbox, DLQ | ✅ выполнено (2026-10-21) | 9 из 9 | `make events-test` (18 интеграционных тестов на PostgreSQL и Redpanda), `cabinet_common.events.cli` проверен из образа, ADR 25 |
 | E02-05 Конфиги с версией | ✅ выполнено (2026-10-21) | 8 из 8 | Семь файлов `config/*.yaml` со схемами в `cabinet_common.config`, `load_all_configs`, `pytest config/` зелёный |
 | E02-02 Compose-профиль `core` | ✅ выполнено (2026-10-21) | 11 из 11 | `deploy/compose/compose.yaml` (23 контейнера), `make up` с чистых томов — все постоянные `healthy`; `tests/test_compose.py`, `deploy/compose/check_limits.py` |
 | E02-07 Локальная LLM | ⬜ не начато | 0 из 7 | — |
@@ -111,15 +111,15 @@ E02-08 (gpu, obs) — после приёмки core, Should-уровень (S)
 
 | ID | Подзадача | Оценка | Готово, когда | Статус |
 | --- | --- | --- | --- | --- |
-| E02-04.1 | Скрипт создания топиков из `docs/contracts/events/topics.yaml`: 11 топиков + `<топик>.dlq`, партиции, ключ, `replication=1`, идемпотентно (`confluent-kafka` AdminClient) | M | Повторный запуск не падает; `rpk topic list` показывает 22 топика | ⬜ не начато |
-| E02-04.2 | Регистрация JSON Schema (конверт + `data` каждого топика) в Schema Registry Redpanda, совместимость BACKWARD, subject = `<топик>-value` | M | `GET /subjects` содержит 11 subjects; повторная регистрация той же схемы — no-op | ⬜ не начато |
-| E02-04.3 | `libs/common/events`: конверт события (`event_id`, `type`, `source`, `time`, `subject`, `schema_version`, `correlation_id`, `data`), валидация `jsonschema` перед публикацией и после чтения | M | Невалидное событие отклоняется (негативный тест) | ⬜ не начато |
-| E02-04.4 | Outbox: SQLAlchemy-модель/миксин `outbox` (id, topic, key, payload, created_at, published_at, attempts), функция `emit(session, event)` в той же транзакции, что и изменение | M | Откат транзакции → события нет (тест) | ⬜ не начато |
-| E02-04.5 | Релей (`SERVICE_MODE=relay`): `SELECT … FOR UPDATE SKIP LOCKED` пачкой, публикация с `acks=all`, пометка `published_at`, ключ = ключ топика (партиционирование) | L | Событие из outbox появляется в топике; параллельные релеи не дублируют | ⬜ не начато |
-| E02-04.6 | Потребитель: базовый класс (`SERVICE_MODE=consumer`), идемпотентность через `processed_events(event_id)` в той же транзакции, что и обработка | M | Повторная доставка того же `event_id` обрабатывается один раз | ⬜ не начато |
-| E02-04.7 | Повторы и DLQ: 3 попытки с экспоненциальной задержкой, затем публикация в `<топик>.dlq` с причиной и исходным конвертом | M | Тест с ошибкой в обработчике: 3 попытки → сообщение в DLQ | ⬜ не начато |
-| E02-04.8 | Сквозной тест «outbox → Redpanda → consumer → processed_events» на Compose-стенде, пример из `docs/contracts/examples/events/` | M | Тест зелёный для минимум 2 топиков | ⬜ не начато |
-| E02-04.9 | Сквозной `correlation_id` (HTTP-заголовок → событие → лог) | S | В логах один `correlation_id` на всей цепочке теста | ⬜ не начато |
+| E02-04.1 | Скрипт создания топиков из `docs/contracts/events/topics.yaml`: 11 топиков + `<топик>.dlq`, партиции, ключ, `replication=1`, идемпотентно (`confluent-kafka` AdminClient) | M | Повторный запуск не падает; `rpk topic list` показывает 22 топика | ✅ выполнено (2026-10-21): `python -m cabinet_common.events.cli topics`, `make events-test` |
+| E02-04.2 | Регистрация JSON Schema (конверт + `data` каждого топика) в Schema Registry Redpanda, совместимость BACKWARD, subject = `<топик>-value` | M | `GET /subjects` содержит 11 subjects; повторная регистрация той же схемы — no-op | ✅ выполнено (2026-10-21): схема = конверт со встроенной `data`; Redpanda отклоняет смену типа поля, но пропускает новое обязательное поле |
+| E02-04.3 | `libs/common/events`: конверт события (`event_id`, `type`, `source`, `time`, `subject`, `schema_version`, `correlation_id`, `data`), валидация `jsonschema` перед публикацией и после чтения | M | Невалидное событие отклоняется (негативный тест) | ✅ выполнено (2026-10-21) |
+| E02-04.4 | Outbox: SQLAlchemy-модель/миксин `outbox` (id, topic, key, payload, created_at, published_at, attempts), функция `emit(session, event)` в той же транзакции, что и изменение | M | Откат транзакции → события нет (тест) | ✅ выполнено (2026-10-21) |
+| E02-04.5 | Релей (`SERVICE_MODE=relay`): `SELECT … FOR UPDATE SKIP LOCKED` пачкой, публикация с `acks=all`, пометка `published_at`, ключ = ключ топика (партиционирование) | L | Событие из outbox появляется в топике; параллельные релеи не дублируют | ✅ выполнено (2026-10-21) |
+| E02-04.6 | Потребитель: базовый класс (`SERVICE_MODE=consumer`), идемпотентность через `processed_events(event_id)` в той же транзакции, что и обработка | M | Повторная доставка того же `event_id` обрабатывается один раз | ✅ выполнено (2026-10-21) |
+| E02-04.7 | Повторы и DLQ: 1 основная попытка + 3 повтора с паузами 1/5/25 с (`topics.yaml`), затем публикация в `<топик>.dlq` с причиной и исходным конвертом | M | Тест с ошибкой в обработчике: 3 попытки → сообщение в DLQ | ✅ выполнено (2026-10-21) |
+| E02-04.8 | Сквозной тест «outbox → Redpanda → consumer → processed_events» на Compose-стенде, пример из `docs/contracts/examples/events/` | M | Тест зелёный для минимум 2 топиков | ✅ выполнено (2026-10-21) |
+| E02-04.9 | Сквозной `correlation_id` (HTTP-заголовок → событие → лог) | S | В логах один `correlation_id` на всей цепочке теста | ✅ выполнено (2026-10-21) |
 
 ## E02-05. Конфиги с версией (Backend + Product, M)
 
