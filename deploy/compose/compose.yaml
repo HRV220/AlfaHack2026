@@ -120,6 +120,49 @@ services:
         mc mb --ignore-existing local/mlflow
         mc ls local
 
+  # --- Брокер ------------------------------------------------------------------------------
+  # Redpanda: Kafka API (9092) и Schema Registry (8081) внутри сети; режим dev-container, один узел
+  redpanda:
+    <<: *infra-common
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.18
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --memory=768M
+      - --reserve-memory=0M
+      - --node-id=0
+      - --kafka-addr=internal://0.0.0.0:9092
+      - --advertise-kafka-addr=internal://redpanda:9092
+      - --schema-registry-addr=internal://0.0.0.0:8081
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  redpanda-console:
+    <<: *infra-common
+    image: docker.redpanda.com/redpandadata/console:v2.8.8
+    depends_on:
+      redpanda: {condition: service_healthy}
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+      KAFKA_SCHEMAREGISTRY_ENABLED: "true"
+      KAFKA_SCHEMAREGISTRY_URLS: http://redpanda:8081
+    ports:
+      - "127.0.0.1:${CONSOLE_PORT:-8081}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/admin/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
   # Заглушка init (E02-02.4): прикладные сервисы стартуют после неё. Миграции, топики, seed и
   # регистрация моделей добавляются в E02-03, E02-04, E02-06 без изменения графа зависимостей.
   init:
@@ -128,6 +171,7 @@ services:
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
+      redpanda: {condition: service_healthy}
       minio-init: {condition: service_completed_successfully}
     entrypoint: ["python", "-c", "print('init: nothing to do yet')"]
     environment: *app-env
