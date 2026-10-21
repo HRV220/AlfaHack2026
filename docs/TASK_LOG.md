@@ -85,3 +85,22 @@
 - Проверено: `make check` — lock-check, ruff, mypy, 20 тестов passed (в т.ч. тест наличия всего дерева и 5 тестов `/health`); `pre-commit run --all-files` без замечаний. `security-audit` не применим.
 - Осталось / отложено: наполнение `THIRD_PARTY_NOTICES` — по мере добавления зависимостей и в E17-02; healthcheck с проверкой БД/брокера — E02-02.9; предупреждение starlette про `httpx2` в тестах — разобрать при обновлении зависимостей.
 - Закрыта: 2026-10-21, коммит: см. историю git; пуш не подтверждён
+
+## E02-09.3. Пакеты libs/common: заглушки JWT, outbox, идемпотентности
+
+- Взята в работу: 2026-10-21 (доработка подзадачи E02-09.3, сделанной частично)
+- Опорные разделы: Арх. 9 (outbox, идемпотентность), 14 (JWT, срок 8 ч, company_id только из JWT), 21.1 (состав `libs/common`); ТЗ NFR-20
+
+### Критические вопросы и ответы
+
+| # | Вопрос | Ответ разработчика | Влияние на реализацию |
+| --- | --- | --- | --- |
+| 1 | Заглушки: только контракты или рабочие in-memory версии? | Только контракты | Типы и `Protocol` без реализации и без новых зависимостей; рабочие версии — E02-04 (outbox, идемпотентность) и E04 (JWT) |
+| 2 | Набор claims JWT (в контракте не описан) | `sub`, `company_id`, `role`, `iat`, `exp` | `role` = `applicant` \| `underwriter`; `applicant_role` (REG-09) в токен не входит |
+
+### Итог
+
+- Сделано: `cabinet_common.auth` (`TokenClaims`, `TokenRole`, `TokenService`, TTL 8 ч), `cabinet_common.outbox` (`OutboxRecord`, `OutboxWriter`, `OutboxReader`), `cabinet_common.idempotency` (`ProcessedEvents`) — только типы и `Protocol`, без новых зависимостей.
+- Проверено: `make check` — lock-check, ruff, mypy, 23 теста passed (3 новых: поля claims, неизменяемость и проверка роли, значения outbox по умолчанию). `security-audit` не применим: реализации auth нет, только типы.
+- Осталось / отложено: реализация JWT — E04; outbox, релей и `processed_events` на SQLAlchemy — E02-04.
+- Закрыта: 2026-10-21
