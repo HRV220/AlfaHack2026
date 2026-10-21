@@ -17,6 +17,17 @@ x-app-env: &app-env
   ASSISTANT_ENABLED: ${ASSISTANT_ENABLED:-true}
   CHECKING_DELAY_SEC: ${CHECKING_DELAY_SEC:-5}
   CONFIG_DIR: /app/config
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  POSTGRES_USER: ${POSTGRES_USER:-cabinet}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cabinet_dev}
+  POSTGRES_DB: ${POSTGRES_DB:-cabinet}
+  REDIS_URL: redis://redis:6379/0
+  KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+  SCHEMA_REGISTRY_URL: http://redpanda:8081
+  S3_ENDPOINT_URL: http://minio:9000
+  S3_ACCESS_KEY: ${MINIO_ROOT_USER:-cabinet}
+  S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-cabinet_dev_secret}
 
 # Хранилища и брокер: без монтирования config/
 x-infra-common: &infra-common
@@ -40,6 +51,34 @@ x-core-api-image: &core-api-image
     context: .
     dockerfile: deploy/docker/Dockerfile.python
     args: {SERVICE: core-api, APP_MODULE: "core_api.main:app"}
+
+x-ml-service-image: &ml-service-image
+  image: alfacase/ml-service:dev
+  build:
+    context: .
+    dockerfile: deploy/docker/Dockerfile.python
+    args: {SERVICE: ml-service, APP_MODULE: "ml_service.main:app"}
+
+x-doc-service-image: &doc-service-image
+  image: alfacase/doc-service:dev
+  build:
+    context: .
+    dockerfile: deploy/docker/Dockerfile.python
+    args: {SERVICE: doc-service, APP_MODULE: "doc_service.main:app", APT_PACKAGES: libmagic1}
+
+x-bank-sim-image: &bank-sim-image
+  image: alfacase/bank-sim:dev
+  build:
+    context: .
+    dockerfile: deploy/docker/Dockerfile.python
+    args: {SERVICE: bank-sim, APP_MODULE: "bank_sim.main:app"}
+
+x-web-image: &web-image
+  image: alfacase/web:dev
+  build:
+    context: .
+    dockerfile: deploy/docker/Dockerfile.python
+    args: {SERVICE: web, APP_MODULE: "cabinet_web.main:app"}
 
 networks:
   backend:
@@ -162,6 +201,101 @@ services:
       timeout: 5s
       retries: 6
       start_period: 15s
+
+  # --- Прикладные сервисы ------------------------------------------------------------------
+  # api, consumer и relay одного сервиса — отдельные контейнеры одного образа (SERVICE_MODE)
+  bank-sim:
+    <<: [*app-common, *bank-sim-image]
+    depends_on:
+      init: {condition: service_completed_successfully}
+    environment:
+      <<: *app-env
+      SERVICE_NAME: bank-sim
+      SERVICE_MODE: api
+
+  ml-service:
+    <<: [*app-common, *ml-service-image]
+    depends_on:
+      init: {condition: service_completed_successfully}
+    environment:
+      <<: *app-env
+      SERVICE_NAME: ml-service
+      SERVICE_MODE: api
+
+  ml-service-consumer:
+    <<: [*app-common, *ml-service-image]
+    depends_on:
+      init: {condition: service_completed_successfully}
+    environment:
+      <<: *app-env
+      SERVICE_NAME: ml-service
+      SERVICE_MODE: consumer
+
+  ml-service-relay:
+    <<: [*app-common, *ml-service-image]
+    depends_on:
+      init: {condition: service_completed_successfully}
+    environment:
+      <<: *app-env
+      SERVICE_NAME: ml-service
+      SERVICE_MODE: relay
+
+  core-api:
+    <<: [*app-common, *core-api-image]
+    depends_on:
+      init: {condition: service_completed_successfully}
+      ml-service: {condition: service_healthy}
+      bank-sim: {condition: service_healthy}
+    environment:
+      <<: *app-env
+      SERVICE_NAME: core-api
+      SERVICE_MODE: api
+
+  core-api-consumer:
+    <<: [*app-common, *core-api-image]
+    depends_on:
+      init: {condition: service_completed_successfully}
+    environment:
+      <<: *app-env
+      SERVICE_NAME: core-api
+      SERVICE_MODE: consumer
+
+  core-api-relay:
+    <<: [*app-common, *core-api-image]
+    depends_on:
+      init: {condition: service_completed_successfully}
+    environment:
+      <<: *app-env
+      SERVICE_NAME: core-api
+      SERVICE_MODE: relay
+
+  doc-service-consumer:
+    <<: [*app-common, *doc-service-image]
+    depends_on:
+      init: {condition: service_completed_successfully}
+    environment:
+      <<: *app-env
+      SERVICE_NAME: doc-service
+      SERVICE_MODE: consumer
+
+  doc-service-relay:
+    <<: [*app-common, *doc-service-image]
+    depends_on:
+      init: {condition: service_completed_successfully}
+    environment:
+      <<: *app-env
+      SERVICE_NAME: doc-service
+      SERVICE_MODE: relay
+
+  web:
+    <<: [*app-common, *web-image]
+    depends_on:
+      init: {condition: service_completed_successfully}
+      core-api: {condition: service_healthy}
+    environment:
+      <<: *app-env
+      SERVICE_NAME: web
+      SERVICE_MODE: api
 
   # Заглушка init (E02-02.4): прикладные сервисы стартуют после неё. Миграции, топики, seed и
   # регистрация моделей добавляются в E02-03, E02-04, E02-06 без изменения графа зависимостей.

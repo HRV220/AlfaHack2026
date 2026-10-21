@@ -29,7 +29,7 @@ check: lock-check lint type test
 up down: compose-file-check
 
 up:
-	$(COMPOSE) --profile core up -d
+	$(COMPOSE) --profile core up -d --build
 
 down:
 	$(COMPOSE) --profile core down
