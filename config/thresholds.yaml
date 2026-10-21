@@ -1,0 +1,28 @@
+# Пороги (ТЗ CAT-03, SC-04, SC-06, REC-03, REC-06, REC-07). `version` попадает в снимок как grades.
+# Доли и ставки — десятичные: 0.05 = 5%, 0.02 = 2 п.п.
+version: "1.0.0"
+
+# Грейды по PD (CAT-03, SC-04): грейд определяется верхней границей pd_lt (PD строго меньше);
+# последний грейд — всё остальное. rate_surcharge: null — отказ, ставка не считается.
+grades:
+  - {grade: A, pd_lt: 0.02, rate_surcharge: 0.00}
+  - {grade: B, pd_lt: 0.05, rate_surcharge: 0.02}
+  - {grade: C, pd_lt: 0.12, rate_surcharge: 0.04}
+  - {grade: D, pd_lt: null, rate_surcharge: null}
+
+# Шанс одобрения (REC-03): HIGH — PD < pd_medium_from и сумма полностью;
+# MEDIUM — PD < pd_medium_from и сумма меньше нужной, либо pd_medium_from <= PD < pd_low_from;
+# LOW — PD >= pd_low_from. Границы совпадают с границами грейдов B и C.
+approval_chance:
+  pd_medium_from: 0.05
+  pd_low_from: 0.12
+  factor_scores: {HIGH: 1.0, MEDIUM: 0.6, LOW: 0.2}  # фактор F5 (REC-06)
+
+# Объяснение (SC-06, REC-12): сколько признаков SHAP, повышающих PD, переводится в reason codes
+explanation:
+  shap_top_n: 3
+
+# Альтернативы (REC-07): до max_count вариантов других продуктов с оценкой >= min_score_ratio × лучшей
+alternatives:
+  max_count: 2
+  min_score_ratio: 0.7
