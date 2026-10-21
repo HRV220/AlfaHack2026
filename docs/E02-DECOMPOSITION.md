@@ -145,7 +145,7 @@ E02-08 (gpu, obs) — после приёмки core, Should-уровень (S)
 | E02-02.5 | ClamAV (clamd, healthcheck, том для сигнатур; режим без сети — сигнатуры в образе/томе) и MLflow (backend — PostgreSQL, артефакты — MinIO) | M | `clamd PING` → PONG; MLflow UI доступен | ✅ выполнено (2026-10-21) |
 | E02-02.6 | Edge (Nginx): маршруты `/` → web, `/api` → core-api; `proxy_buffering off` и `proxy_read_timeout` для SSE; `limit_req` rate limit; TLS самоподписанный (dev), заголовки безопасности | L | SSE-эндпоинт не буферизуется (проверка curl -N); `/api` и `/` маршрутизируются | ✅ выполнено (2026-10-21) |
 | E02-02.7 | Ollama в профиле `core` (том моделей, healthcheck, предзагрузка — см. E02-07) | S | Контейнер healthy | ✅ выполнено (2026-10-21) |
-| E02-02.8 | `mem_limit` на каждый контейнер; таблица лимитов в README; сумма вместе с LLM ≤ 14 ГБ (замер — день 2) | M | `docker stats` под нагрузкой не превышает лимиты; сумма проверяется скриптом по `compose config` | ⬜ не начато |
+| E02-02.8 | `mem_limit` на каждый контейнер; таблица лимитов в README; сумма вместе с LLM ≤ 14 ГБ (замер — день 2) | M | `docker stats` под нагрузкой не превышает лимиты; сумма проверяется скриптом по `compose config` | ✅ выполнено (2026-10-21) |
 | E02-02.9 | Healthcheck на каждый сервис (`/health` с проверкой зависимостей: БД, брокер, Redis) | M | `docker compose ps` — все `healthy` | ⬜ не начато |
 | E02-02.10 | Фиксация тегов образов (NFR-20), `.env.example` без секретов (только dev-значения-плейсхолдеры, генерация паролей при первом старте) | S | Нет `latest` в compose (grep) | ⬜ не начато |
 | E02-02.11 | Режим по умолчанию: `LLM_PROVIDER=local`, `LLM_MODEL`, `ASSISTANT_ENABLED`, `CHECKING_DELAY_SEC` | S | Переменные описаны в `.env.example` | ✅ выполнено (2026-10-21) |

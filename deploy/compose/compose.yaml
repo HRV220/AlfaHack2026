@@ -100,6 +100,7 @@ volumes:
 services:
   # --- Хранилища ---------------------------------------------------------------------------
   postgres:
+    mem_limit: 640m
     <<: *infra-common
     image: pgvector/pgvector:0.8.0-pg16
     environment:
@@ -116,6 +117,7 @@ services:
       start_period: 10s
 
   redis:
+    mem_limit: 128m
     <<: *infra-common
     image: redis:7.4.1-alpine
     command: ["redis-server", "--appendonly", "yes"]
@@ -129,6 +131,7 @@ services:
 
   # MinIO: образ bitnamilegacy (minio/minio снят с Docker Hub), версия закреплена
   minio:
+    mem_limit: 384m
     <<: *infra-common
     image: bitnamilegacy/minio:2025.4.22-debian-12-r1
     environment:
@@ -146,6 +149,7 @@ services:
 
   # Одноразовое создание бакетов documents и mlflow (идемпотентно)
   minio-init:
+    mem_limit: 128m
     <<: *infra-common
     restart: "no"
     image: bitnamilegacy/minio:2025.4.22-debian-12-r1
@@ -166,6 +170,7 @@ services:
   # --- Брокер ------------------------------------------------------------------------------
   # Redpanda: Kafka API (9092) и Schema Registry (8081) внутри сети; режим dev-container, один узел
   redpanda:
+    mem_limit: 1024m
     <<: *infra-common
     image: docker.redpanda.com/redpandadata/redpanda:v24.3.18
     command:
@@ -189,6 +194,7 @@ services:
       start_period: 20s
 
   redpanda-console:
+    mem_limit: 192m
     <<: *infra-common
     image: docker.redpanda.com/redpandadata/console:v2.8.8
     depends_on:
@@ -209,6 +215,7 @@ services:
   # --- Антивирус и ML-реестр ---------------------------------------------------------------
   # ClamAV работает без сети: сигнатуры лежат в образе (и копируются в том clamav-db), freshclam выключен
   clamav:
+    mem_limit: 1536m
     <<: *infra-common
     image: clamav/clamav:1.4.6
     environment:
@@ -225,6 +232,7 @@ services:
 
   # База MLflow создаётся отдельно от прикладных схем (они — в миграциях E02-03); повтор безопасен
   mlflow-db-init:
+    mem_limit: 128m
     <<: *infra-common
     restart: "no"
     image: pgvector/pgvector:0.8.0-pg16
@@ -241,6 +249,7 @@ services:
         psql -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='mlflow'" | grep -q 1           || psql -d postgres -c "CREATE DATABASE mlflow"
 
   mlflow:
+    mem_limit: 1024m
     <<: *infra-common
     image: alfacase/mlflow:dev
     build:
@@ -262,6 +271,7 @@ services:
   # --- Прикладные сервисы ------------------------------------------------------------------
   # api, consumer и relay одного сервиса — отдельные контейнеры одного образа (SERVICE_MODE)
   bank-sim:
+    mem_limit: 128m
     <<: [*app-common, *bank-sim-image]
     depends_on:
       init: {condition: service_completed_successfully}
@@ -271,6 +281,7 @@ services:
       SERVICE_MODE: api
 
   ml-service:
+    mem_limit: 640m
     <<: [*app-common, *ml-service-image]
     depends_on:
       init: {condition: service_completed_successfully}
@@ -281,6 +292,7 @@ services:
       SERVICE_MODE: api
 
   ml-service-consumer:
+    mem_limit: 256m
     <<: [*app-common, *ml-service-image]
     depends_on:
       init: {condition: service_completed_successfully}
@@ -290,6 +302,7 @@ services:
       SERVICE_MODE: consumer
 
   ml-service-relay:
+    mem_limit: 128m
     <<: [*app-common, *ml-service-image]
     depends_on:
       init: {condition: service_completed_successfully}
@@ -299,6 +312,7 @@ services:
       SERVICE_MODE: relay
 
   core-api:
+    mem_limit: 320m
     <<: [*app-common, *core-api-image]
     depends_on:
       init: {condition: service_completed_successfully}
@@ -310,6 +324,7 @@ services:
       SERVICE_MODE: api
 
   core-api-consumer:
+    mem_limit: 192m
     <<: [*app-common, *core-api-image]
     depends_on:
       init: {condition: service_completed_successfully}
@@ -319,6 +334,7 @@ services:
       SERVICE_MODE: consumer
 
   core-api-relay:
+    mem_limit: 128m
     <<: [*app-common, *core-api-image]
     depends_on:
       init: {condition: service_completed_successfully}
@@ -328,6 +344,7 @@ services:
       SERVICE_MODE: relay
 
   doc-service-consumer:
+    mem_limit: 256m
     <<: [*app-common, *doc-service-image]
     depends_on:
       init: {condition: service_completed_successfully}
@@ -338,6 +355,7 @@ services:
       SERVICE_MODE: consumer
 
   doc-service-relay:
+    mem_limit: 128m
     <<: [*app-common, *doc-service-image]
     depends_on:
       init: {condition: service_completed_successfully}
@@ -347,6 +365,7 @@ services:
       SERVICE_MODE: relay
 
   web:
+    mem_limit: 192m
     <<: [*app-common, *web-image]
     depends_on:
       init: {condition: service_completed_successfully}
@@ -359,6 +378,7 @@ services:
   # Заглушка init (E02-02.4): прикладные сервисы стартуют после неё. Миграции, топики, seed и
   # регистрация моделей добавляются в E02-03, E02-04, E02-06 без изменения графа зависимостей.
   init:
+    mem_limit: 128m
     <<: [*app-common, *core-api-image]
     restart: "no"
     depends_on:
@@ -373,6 +393,7 @@ services:
   # Прикладные сервисы от неё не зависят: при недоступной LLM подбор идёт через форму (РШ-9).
   # Модель в образ не входит; загрузка и прогрев — E02-07.
   ollama:
+    mem_limit: 6144m
     <<: *infra-common
     image: ollama/ollama:0.12.3
     environment:
@@ -389,6 +410,7 @@ services:
   # --- Edge ---------------------------------------------------------------------------------
   # Самоподписанный сертификат создаётся один раз при первом старте (ключ в репозиторий не кладётся)
   edge-certs-init:
+    mem_limit: 64m
     <<: *infra-common
     restart: "no"
     image: alpine/openssl:3.3.2
@@ -400,6 +422,7 @@ services:
       - edge-certs:/certs
 
   edge:
+    mem_limit: 64m
     <<: *infra-common
     image: nginx:1.27.3-alpine
     depends_on:
