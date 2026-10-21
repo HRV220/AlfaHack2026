@@ -104,3 +104,16 @@
 - Проверено: `make check` — lock-check, ruff, mypy, 23 теста passed (3 новых: поля claims, неизменяемость и проверка роли, значения outbox по умолчанию). `security-audit` не применим: реализации auth нет, только типы.
 - Осталось / отложено: реализация JWT — E04; outbox, релей и `processed_events` на SQLAlchemy — E02-04.
 - Закрыта: 2026-10-21
+
+## E02-09.5. pre-commit: detect-secrets
+
+- Взята в работу: 2026-10-21 (доработка подзадачи E02-09.5, сделанной частично)
+- Опорные разделы: ТЗ NFR-19, NFR-20; Декомпозиция E02-09.5
+- Критические вопросы: критических вопросов нет — требование однозначно («detect-secrets»), выбор способа установки хука — решение исполнителя.
+
+### Итог
+
+- Сделано: локальный хук `detect-secrets` в `.pre-commit-config.yaml` (`uv run detect-secrets-hook --baseline .secrets.baseline`), `detect-secrets` (Apache 2.0) в dev-зависимостях, `.secrets.baseline`. Хук локальный, а не из репозитория Yelp: GitHub был недоступен из-за сетевой ошибки, а PyPI доступен; плюс версия фиксируется `uv.lock` (NFR-20).
+- Проверено: `pre-commit run --all-files` — все хуки Passed; негативный случай: файл с ключом вида `AKIA…` в staging → хук `detect-secrets` падает. В baseline одно ложное срабатывание: `TRACE` (пример trace_id) в `docs/contracts/tools/gen_examples.py`.
+- Осталось / отложено: E02-09.6 — цели `up`/`down` в Makefile (после E02-02).
+- Закрыта: 2026-10-21
