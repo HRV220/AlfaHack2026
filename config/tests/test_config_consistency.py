@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 from cabinet_common.config import ConfigError
-from cabinet_common.config.registry import CONFIG_FILES, load_all_configs
+from cabinet_common.config.registry import CONFIG_FILES, LoadedConfigs, load_all_configs
 
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = ROOT / "config"
@@ -92,3 +92,22 @@ def test_missing_file_stops_loading(tmp_path: Path) -> None:
     (tmp_path / "config" / "okved_groups.yaml").unlink()
     with pytest.raises(ConfigError, match="okved_groups.yaml"):
         load_all_configs(tmp_path / "config")
+
+
+def test_registry_matches_loaded_configs_fields() -> None:
+    fields = set(LoadedConfigs.__dataclass_fields__)
+    assert {file.name.removesuffix(".yaml") for file in CONFIG_FILES} == fields
+    keys = {file.versions_key for file in CONFIG_FILES if file.versions_key}
+    assert keys == set(load_all_configs(CONFIG_DIR).versions())
+
+
+def test_loaded_values_are_immutable() -> None:
+    c = load_all_configs(CONFIG_DIR)
+    with pytest.raises(TypeError):
+        c.goal_fit.data.matrix["CASH_GAP"]["P4"] = 1.0  # type: ignore[index]
+    with pytest.raises(TypeError):
+        c.ranking_weights.data.weights["NONE"] = {}  # type: ignore[index]
+    with pytest.raises(TypeError):
+        c.eligibility.data.products["P1"] = None  # type: ignore[index]
+    with pytest.raises(TypeError):
+        c.thresholds.data.approval_chance.factor_scores["HIGH"] = 0.0  # type: ignore[index]

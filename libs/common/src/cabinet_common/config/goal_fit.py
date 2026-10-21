@@ -1,10 +1,11 @@
 """Схема `config/goal_fit.yaml`: матрица «цель × продукт» (ТЗ 4.3, CAT-02)."""
 
-from typing import Self
+from collections.abc import Mapping
+from typing import Any, Self
 
-from pydantic import model_validator
+from pydantic import Field, field_validator, model_validator
 
-from cabinet_common.config.loader import ConfigModel
+from cabinet_common.config.loader import ConfigModel, freeze
 from cabinet_common.config.products import PRODUCT_CODES
 
 GOALS = ("CASH_GAP", "PURCHASE", "SEASONAL", "EQUIPMENT", "RENOVATION", "CONTRACT", "OTHER")
@@ -12,8 +13,15 @@ REGULARITIES = ("ONE_TIME", "RECURRING")
 
 
 class GoalFitConfig(ConfigModel):
-    matrix: dict[str, dict[str, float]]
-    regularity_bonus: dict[str, dict[str, float]] = {}
+    matrix: Mapping[str, Mapping[str, float]]
+    regularity_bonus: Mapping[str, Mapping[str, float]] = Field(
+        default_factory=dict, validate_default=True
+    )
+
+    @field_validator("matrix", "regularity_bonus", mode="after")
+    @classmethod
+    def _frozen(cls, value: Mapping[str, Any]) -> Mapping[str, Any]:
+        return freeze(value)  # type: ignore[no-any-return]
 
     @model_validator(mode="after")
     def _complete(self) -> Self:

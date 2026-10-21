@@ -61,3 +61,18 @@ def test_missing_file_raises(tmp_path: Path) -> None:
 def test_numeric_version_rejected(tmp_path: Path) -> None:
     with pytest.raises(ConfigError, match="version"):
         load_config(write(tmp_path, "version: 1.0\nitems: []\n"), Sample)
+
+
+def test_duplicate_key_rejected(tmp_path: Path) -> None:
+    text = "version: 1.0.0\nitems: [a]\nitems: [b]\n"
+    with pytest.raises(ConfigError, match="повторяющийся ключ 'items'"):
+        load_config(write(tmp_path, text), Sample)
+
+
+def test_duplicate_key_in_nested_mapping_rejected(tmp_path: Path) -> None:
+    class Nested(ConfigModel):
+        matrix: dict[str, dict[str, float]]
+
+    text = "version: 1.0.0\nmatrix:\n  A: {x: 1}\n  A: {x: 2}\n"
+    with pytest.raises(ConfigError, match="повторяющийся ключ 'A'"):
+        load_config(write(tmp_path, text), Nested)

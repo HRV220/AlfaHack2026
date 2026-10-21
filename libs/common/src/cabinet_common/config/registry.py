@@ -5,7 +5,7 @@ from pathlib import Path
 
 from cabinet_common.config.eligibility import EligibilityConfig
 from cabinet_common.config.goal_fit import GoalFitConfig
-from cabinet_common.config.loader import ConfigModel, LoadedConfig, load_config
+from cabinet_common.config.loader import LoadedConfig, load_config
 from cabinet_common.config.okved import OkvedGroupsConfig
 from cabinet_common.config.products import ProductsConfig
 from cabinet_common.config.ranking import RankingWeightsConfig, ThresholdsConfig
@@ -15,18 +15,17 @@ from cabinet_common.config.reason_codes import ReasonCodesConfig
 @dataclass(frozen=True)
 class ConfigFile:
     name: str
-    model: type[ConfigModel]
     versions_key: str | None  # поле `ConfigVersions` контракта; None — в снимок не попадает
 
 
 CONFIG_FILES = (
-    ConfigFile("products.yaml", ProductsConfig, "catalog"),
-    ConfigFile("goal_fit.yaml", GoalFitConfig, "goal_fit"),
-    ConfigFile("eligibility.yaml", EligibilityConfig, None),
-    ConfigFile("ranking_weights.yaml", RankingWeightsConfig, "weights"),
-    ConfigFile("thresholds.yaml", ThresholdsConfig, "grades"),
-    ConfigFile("reason_codes.yaml", ReasonCodesConfig, "reason_codes"),
-    ConfigFile("okved_groups.yaml", OkvedGroupsConfig, None),
+    ConfigFile("products.yaml", "catalog"),
+    ConfigFile("goal_fit.yaml", "goal_fit"),
+    ConfigFile("eligibility.yaml", None),
+    ConfigFile("ranking_weights.yaml", "weights"),
+    ConfigFile("thresholds.yaml", "grades"),
+    ConfigFile("reason_codes.yaml", "reason_codes"),
+    ConfigFile("okved_groups.yaml", None),
 )
 
 
@@ -42,18 +41,24 @@ class LoadedConfigs:
 
     def versions(self) -> dict[str, str]:
         """Версии для `ConfigVersions` снимка: ключ контракта → `version` файла."""
-        versions: dict[str, str] = {}
-        for file in CONFIG_FILES:
-            if file.versions_key is not None:
-                versions[file.versions_key] = getattr(self, file.name.removesuffix(".yaml")).version
-        return versions
+        return {
+            "catalog": self.products.version,
+            "goal_fit": self.goal_fit.version,
+            "grades": self.thresholds.version,
+            "weights": self.ranking_weights.version,
+            "reason_codes": self.reason_codes.version,
+        }
 
 
 def load_all_configs(config_dir: Path | str) -> LoadedConfigs:
     """Читает и проверяет схемами все файлы каталога конфигов; любая ошибка — `ConfigError`."""
     directory = Path(config_dir)
-    loaded = {
-        file.name.removesuffix(".yaml"): load_config(directory / file.name, file.model)
-        for file in CONFIG_FILES
-    }
-    return LoadedConfigs(**loaded)  # type: ignore[arg-type]
+    return LoadedConfigs(
+        products=load_config(directory / "products.yaml", ProductsConfig),
+        goal_fit=load_config(directory / "goal_fit.yaml", GoalFitConfig),
+        eligibility=load_config(directory / "eligibility.yaml", EligibilityConfig),
+        ranking_weights=load_config(directory / "ranking_weights.yaml", RankingWeightsConfig),
+        thresholds=load_config(directory / "thresholds.yaml", ThresholdsConfig),
+        reason_codes=load_config(directory / "reason_codes.yaml", ReasonCodesConfig),
+        okved_groups=load_config(directory / "okved_groups.yaml", OkvedGroupsConfig),
+    )

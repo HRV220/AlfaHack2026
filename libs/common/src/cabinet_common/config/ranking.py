@@ -1,11 +1,12 @@
 """Схемы `config/ranking_weights.yaml` и `config/thresholds.yaml` (ТЗ REC-06, CAT-03, SC-04)."""
 
 import math
-from typing import Self
+from collections.abc import Mapping
+from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from cabinet_common.config.loader import ConfigModel
+from cabinet_common.config.loader import ConfigModel, freeze
 
 PRIORITIES = ("NONE", "MIN_PAYMENT", "MIN_OVERPAYMENT", "SPEED", "NO_COLLATERAL")
 FACTORS = ("F1", "F2", "F3", "F4", "F5", "F6")
@@ -14,7 +15,12 @@ CHANCES = ("HIGH", "MEDIUM", "LOW")
 
 
 class RankingWeightsConfig(ConfigModel):
-    weights: dict[str, dict[str, float]]
+    weights: Mapping[str, Mapping[str, float]]
+
+    @field_validator("weights", mode="after")
+    @classmethod
+    def _frozen(cls, value: Mapping[str, Any]) -> Mapping[str, Any]:
+        return freeze(value)  # type: ignore[no-any-return]
 
     @model_validator(mode="after")
     def _check(self) -> Self:
@@ -43,7 +49,12 @@ class GradeRule(_Model):
 class ApprovalChance(_Model):
     pd_medium_from: float = Field(gt=0, lt=1)
     pd_low_from: float = Field(gt=0, lt=1)
-    factor_scores: dict[str, float]
+    factor_scores: Mapping[str, float]
+
+    @field_validator("factor_scores", mode="after")
+    @classmethod
+    def _frozen(cls, value: Mapping[str, Any]) -> Mapping[str, Any]:
+        return freeze(value)  # type: ignore[no-any-return]
 
 
 class Explanation(_Model):

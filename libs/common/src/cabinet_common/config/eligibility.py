@@ -1,10 +1,11 @@
 """Схема `config/eligibility.yaml`: стоп-факторы и условия допуска (ТЗ SC-01, REC-01, 4.3)."""
 
-from typing import Self
+from collections.abc import Mapping
+from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from cabinet_common.config.loader import ConfigModel
+from cabinet_common.config.loader import ConfigModel, freeze
 from cabinet_common.config.products import PRODUCT_CODES
 
 OPFS = ("IP", "LLC")
@@ -143,7 +144,12 @@ class EligibilityConfig(ConfigModel):
     stop_factors: StopFactors
     rules: Rules
     capacity: Capacity
-    products: dict[str, ProductConditions]
+    products: Mapping[str, ProductConditions]
+
+    @field_validator("products", mode="after")
+    @classmethod
+    def _frozen(cls, value: Mapping[str, Any]) -> Mapping[str, Any]:
+        return freeze(value)  # type: ignore[no-any-return]
 
     @model_validator(mode="after")
     def _check(self) -> Self:

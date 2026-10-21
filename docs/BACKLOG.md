@@ -77,7 +77,7 @@
 | E02-03 | Миграции БД по схемам архитектуры 11.1: по одной на сервис, без чтения чужих таблиц | Backend | — | — | 11.1 | M | todo |
 | E02-04 | Топики и схемы в Schema Registry по реестру топиков; outbox-таблица, relay, идемпотентность по `event_id`, повторы и DLQ | Backend | РШ-8 | 1 | 9; 10.1 | M | todo |
 | E02-05 | Конфиги с версией: `products.yaml` (6 продуктов), `goal_fit.yaml`, `eligibility.yaml`, `ranking_weights.yaml`, `thresholds`, `reason_codes.yaml` (тексты — Product), `okved_groups.yaml` | Backend + Product | CAT-01–CAT-05, SC-06 | 4.3; 5.4 | 3.4; 3.6; 12 | M | done (2026-10-21) |
-| E02-06 | Единый старт: init-контейнер (миграции, топики, seed демо-компаний и синтетического реестра, регистрация моделей в MLflow), `.env.example` без секретов | Backend | NFR-01, NFR-12 | 9 | 16 | M | done (2026-10-21) |
+| E02-06 | Единый старт: init-контейнер (миграции, топики, seed демо-компаний и синтетического реестра, регистрация моделей в MLflow), `.env.example` без секретов | Backend | NFR-01, NFR-12 | 9 | 16 | M | todo |
 | E02-07 | Локальная LLM с открытыми весами: выбор модели и лицензии, квантизация, замер памяти и задержек в 16 ГБ, `LlmPort` (OpenAI-совместимый API); облачные адаптеры не входят | DS/ML + Backend | NFR-18, NFR-19, NFR-22 | 9 | 7.4; 8; 16 | M | todo |
 | E02-08 | Профиль `gpu` (необязательный) и профиль `obs` (выключен по умолчанию) | Backend | NFR-22 | 9 (NFR-22) | 16 | S | todo |
 | E02-09 | Python-монорепозиторий: `uv` workspace, `pyproject.toml` на сервис, `uv.lock`, пакеты `libs/{common,contracts,featurebuilder}`, `ruff`, `mypy`, `pytest`, `pre-commit` | Backend | NFR-20, NFR-23 | 9 | 16; 21; 21.1 | M | done (2026-10-21) |
