@@ -1,0 +1,20 @@
+{# Состояния «загрузка / ошибка / пусто» для блоков страницы (E02-11.3). #}
+{% macro loading(text="Загружаем…") %}
+<div class="state state--loading" role="status" aria-live="polite">
+  <span class="spinner" aria-hidden="true"></span><span>{{ text }}</span>
+</div>
+{% endmacro %}
+
+{% macro error(title="Не удалось загрузить", text="") %}
+<div class="state state--error" role="alert">
+  <strong>{{ title }}</strong>
+  {% if text %}<p>{{ text }}</p>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro empty(title="Пока ничего нет", text="") %}
+<div class="state state--empty">
+  <strong>{{ title }}</strong>
+  {% if text %}<p>{{ text }}</p>{% endif %}
+</div>
+{% endmacro %}

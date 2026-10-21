@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{% block title %}Кредитный кабинет{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+  <script src="{{ url_for('static', path='vendor/htmx.min.js') }}" defer></script>
+  <script src="{{ url_for('static', path='vendor/htmx-ext-sse.js') }}" defer></script>
+  <script src="{{ url_for('static', path='vendor/alpine.min.js') }}" defer></script>
+  <script src="{{ url_for('static', path='js/csrf.js') }}" defer></script>
+  {% block head %}{% endblock %}
+</head>
+<body hx-ext="sse">
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="brand" href="/">Кредитный кабинет</a>
+      {% block header_extra %}{% endblock %}
+    </div>
+  </header>
+  <main class="container" id="content">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer">
+    <div class="container">Учебный прототип. Все данные синтетические.</div>
+  </footer>
+</body>
+</html>

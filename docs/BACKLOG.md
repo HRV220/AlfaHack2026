@@ -82,7 +82,7 @@
 | E02-08 | Профиль `gpu` (необязательный) и профиль `obs` (выключен по умолчанию) | Backend | NFR-22 | 9 (NFR-22) | 16 | S | todo |
 | E02-09 | Python-монорепозиторий: `uv` workspace, `pyproject.toml` на сервис, `uv.lock`, пакеты `libs/{common,contracts,featurebuilder}`, `ruff`, `mypy`, `pytest`, `pre-commit` | Backend | NFR-20, NFR-23 | 9 | 16; 21; 21.1 | M | done (2026-10-21) |
 | E02-10 | Базовые образы: `python:3.12-slim`, multi-stage сборка через `uv`, запуск не от root, режимы `api` / `consumer` / `relay` | Backend | NFR-01, NFR-23 | 9 | 16; 21 | M | done (2026-10-21) |
-| E02-11 | Каркас web: FastAPI + Jinja2 + HTMX (SSE), базовая вёрстка от 360 px, вендоренная статика (HTMX, Alpine.js, Chart.js) без CDN, CSRF-слой | Frontend | NFR-16, NFR-19, NFR-23 | 9 | 8; 21 | M | todo |
+| E02-11 | Каркас web: FastAPI + Jinja2 + HTMX (SSE), базовая вёрстка от 360 px, вендоренная статика (HTMX, Alpine.js, Chart.js) без CDN, CSRF-слой | Frontend | NFR-16, NFR-19, NFR-23 | 9 | 8; 21 | M | done (2026-10-21) |
 
 ---
 

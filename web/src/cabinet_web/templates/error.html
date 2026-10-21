@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% from "partials/states.html" import error %}
+{% block title %}{{ title }} — Кредитный кабинет{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>{{ title }}</h1>
+  {{ error(title="", text=message) }}
+  <p><a class="btn btn--secondary" href="/">На главную</a></p>
+</section>
+{% endblock %}

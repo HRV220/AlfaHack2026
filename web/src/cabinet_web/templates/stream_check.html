@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Проверка потока — Кредитный кабинет{% endblock %}
+{% block head %}<script src="{{ url_for('static', path='js/sse-status.js') }}" defer></script>{% endblock %}
+{% block content %}
+<section class="card" hx-ext="sse" sse-connect="/api/v1/events/stream" id="stream-box">
+  <h1>Проверка потока событий</h1>
+  <p>Статус: <span class="badge badge--wait" id="sse-status" role="status">подключаемся…</span></p>
+  <p class="muted">Последний ping: <span id="sse-ping" sse-swap="ping">—</span></p>
+</section>
+{% endblock %}

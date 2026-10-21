@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Опишите задачу — Кредитный кабинет{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Опишите задачу</h1>
+  <p class="muted">
+    {% if session and session.company %}{{ session.company.name }}. {% endif %}
+    Расскажите, зачем нужны деньги, — мы подберём подходящий кредит.
+  </p>
+  <form class="form" action="#" method="post" onsubmit="return false">
+    <label for="need-text">Что нужно профинансировать</label>
+    <textarea id="need-text" name="text" rows="4" disabled
+      placeholder="Например: нужно 2 млн на закупку товара на 6 месяцев"></textarea>
+    <button class="btn" type="submit" disabled>Подобрать кредит</button>
+  </form>
+  <p class="muted small">Подбор появится в следующих задачах (E04–E06).</p>
+</section>
+{% endblock %}

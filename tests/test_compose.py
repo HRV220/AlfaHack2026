@@ -40,9 +40,9 @@ def test_env_example_has_no_secrets() -> None:
             continue
         name, value = line.split("=", 1)
         if secret_name.search(name) and value.strip():
-            assert "dev" in value.lower(), (
-                f"{name}: в .env.example допустимы только учебные значения"
-            )
+            assert (
+                "dev" in value.lower()
+            ), f"{name}: в .env.example допустимы только учебные значения"
 
 
 @pytest.mark.skipif(shutil.which("docker") is None, reason="docker не установлен")
