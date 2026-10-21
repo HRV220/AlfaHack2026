@@ -15,6 +15,9 @@ COPY services ./services
 COPY web ./web
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable --package "${SERVICE}"
+# Alembic-среды всех сервисов для init-контейнера (E02-06): services/<сервис>/migrations/<схема>
+RUN mkdir -p /out && find services -mindepth 2 -maxdepth 2 -type d -name migrations \
+    -exec cp -r --parents {} /out \;
 
 FROM ${PYTHON_IMAGE} AS runtime
 ARG APT_PACKAGES=""
@@ -29,11 +32,16 @@ COPY --from=builder /app/.venv /app/.venv
 # Контракт событий — единственный источник схем (docs/contracts), без копии в репозитории
 COPY docs/contracts/events /app/contracts/events
 COPY docs/contracts/schemas /app/contracts/schemas
+# Миграции всех схем и синтетический реестр: нужны init-контейнеру (E02-06)
+COPY --from=builder /out /app/migrations-root
+COPY fixtures/registry /app/fixtures/registry
 ENV PATH="/app/.venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     APP_MODULE=${APP_MODULE} \
     CONTRACTS_DIR=/app/contracts \
+    MIGRATIONS_ROOT=/app/migrations-root \
+    FIXTURES_DIR=/app/fixtures \
     SERVICE_MODE=api \
     PORT=8000
 USER app

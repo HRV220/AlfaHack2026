@@ -2,15 +2,30 @@
 
 Прототип для хакатона (кейс Альфа-Банк). Python 3.12, монорепозиторий на `uv`.
 
-## Быстрый старт (разработка)
+## Быстрый старт
+
+Нужны Docker (Compose v2) и `make`; на Windows команды выполняются в Git Bash. Ключи и доступ к сети для работы стенда не требуются.
+
+```bash
+make bootstrap   # необязательно: .env со случайными паролями (Windows: scripts\bootstrap.ps1)
+make up          # сборка образов и запуск профиля core; init сам применит миграции, создаст топики и схемы, загрузит реестр
+make smoke       # приёмка: ждёт готовности контейнеров и проверяет сервисы
+```
+
+Без `make bootstrap` стенд поднимается на учебных паролях по умолчанию (NFR-01). Если нужен `.env` со случайными паролями, выполните `make bootstrap` **до первого** `make up`: пароли PostgreSQL и MinIO запоминаются в томах при первой инициализации (при повторном запуске скрипт предупредит о существующих томах). Кабинет открывается на `https://localhost:8443` (самоподписанный сертификат). Остановка: `make down`.
+
+Машине нужно 14–16 ГБ ОЗУ для Docker, если поднимается и локальная LLM (Ollama, до 6 ГБ). Если памяти меньше, запустите стенд без Ollama: `SMOKE_SKIP_LLM=1 bash scripts/smoke.sh --up` (подбор тогда идёт через форму, РШ-9). `SMOKE_PROJECT=имя` поднимает стенд отдельным проектом Compose со своими томами, не трогая существующие.
+
+### Разработка
 
 ```bash
 uv sync --all-packages   # окружение из uv.lock
 make check               # lock-check, ruff, mypy, pytest
 uv run pre-commit install
+make migrate-test        # миграции на одноразовом PostgreSQL в Docker
+make events-test         # топики, схемы, outbox, релей, consumer на PostgreSQL и Redpanda
+make init-test           # init-контейнер: все шаги и seed реестра
 ```
-
-Запуск стенда через Docker Compose (`docker compose --profile core up`) появится после задач E02-02 и E02-06.
 
 ## Карта репозитория
 
@@ -34,7 +49,7 @@ uv run pre-commit install
 
 ## Docker-образы
 
-Один `deploy/docker/Dockerfile.python` на все сервисы (multi-stage: `uv sync --frozen --no-dev --package <service>`, запуск от пользователя `app`, UID 10001). Контекст сборки — корень репозитория. Режим задаёт `SERVICE_MODE` (`api` по умолчанию | `consumer` | `relay`; в двух последних пока заглушка с логом до E02-04).
+Один `deploy/docker/Dockerfile.python` на все сервисы (multi-stage: `uv sync --frozen --no-dev --package <service>`, запуск от пользователя `app`, UID 10001). Контекст сборки — корень репозитория. Режим задаёт `SERVICE_MODE` (`api` по умолчанию | `consumer` | `relay`: релей публикует outbox в брокер, consumer читает топики своих обработчиков, `EVENT_HANDLERS=модуль:имя`; пока обработчиков нет, consumer только ждёт). В образ входят контракты событий (`/app/contracts`), миграции всех схем и синтетический реестр (нужны init).
 
 ```bash
 docker build -f deploy/docker/Dockerfile.python \
@@ -61,7 +76,7 @@ docker build -f deploy/docker/Dockerfile.python \
 | `8081` (`CONSOLE_PORT`) | Redpanda Console |
 | `5000` (`MLFLOW_PORT`) | MLflow |
 
-Порядок старта: хранилища и брокер → `init` (пока заглушка, наполняется в E02-03, E02-04, E02-06) → `ml-service`, `bank-sim` → `core-api` → `web` → `edge`. Прикладные сервисы не зависят от Ollama: при недоступной локальной LLM подбор работает через форму. Образы: MinIO — `bitnamilegacy/minio` (ADR 23), MLflow собирается из `deploy/docker/Dockerfile.mlflow`, Ollama весит около 4,9 ГБ (модель в образ не входит, загрузка — E02-07).
+Порядок старта: хранилища и брокер → `init` → `ml-service`, `bank-sim` → `core-api` → `web` → `edge`. Бакеты MinIO создаёт `minio-init`, БД MLflow — `mlflow-db-init`. `init` (`python -m cabinet_common.init`, образ core-api, идемпотентный) по порядку: ждёт PostgreSQL, Redpanda и Schema Registry → создаёт расширения и роли схем → применяет миграции пяти схем → создаёт 22 топика и регистрирует 11 схем → загружает синтетический реестр из `fixtures/registry/` (upsert по ИНН) → проверяет MLflow и LLM; недоступные MLflow и Ollama дают предупреждение в логе, но не останавливают старт. Лог `init`: `docker compose --project-directory . -f deploy/compose/compose.yaml logs init`. Прикладные сервисы не зависят от Ollama: при недоступной локальной LLM подбор работает через форму. Образы: MinIO — `bitnamilegacy/minio` (ADR 23), MLflow собирается из `deploy/docker/Dockerfile.mlflow`, Ollama весит около 4,9 ГБ (модель в образ не входит, загрузка — E02-07).
 
 ### Лимиты памяти
 

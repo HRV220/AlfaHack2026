@@ -1,0 +1,16 @@
+{
+  "inn": "500100732259",
+  "kpp": null,
+  "ogrn": "315500100732257",
+  "name": "ИП Тестов Максим Андреевич",
+  "opf": "IP",
+  "manager_name": "Тестов Максим Андреевич",
+  "address": "Московская обл., г. Химки, ул. Условная, д. 7",
+  "okved": "47.19",
+  "industry_group": "G01",
+  "registry_status": "ACTIVE",
+  "registered_at": "2023-09-05",
+  "liquidated_at": null,
+  "origin": "SYNTHETIC_REGISTRY",
+  "fetched_at": "2026-10-14T09:00:00+07:00"
+}

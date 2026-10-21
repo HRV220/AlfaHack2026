@@ -1,0 +1,16 @@
+{
+  "inn": "7707083893",
+  "kpp": "770701001",
+  "ogrn": "1027700132195",
+  "name": "ООО «Северный торговый дом Демо»",
+  "opf": "LLC",
+  "manager_name": "Демонстров Алексей Игоревич",
+  "address": "г. Москва, ул. Вымышленная, д. 12, офис 4",
+  "okved": "46.90",
+  "industry_group": "G02",
+  "registry_status": "ACTIVE",
+  "registered_at": "2021-03-15",
+  "liquidated_at": null,
+  "origin": "SYNTHETIC_REGISTRY",
+  "fetched_at": "2026-10-14T09:00:00+07:00"
+}

@@ -33,6 +33,19 @@ x-app-env: &app-env
   CLAMD_PORT: "3310"
   OLLAMA_URL: http://ollama:11434
 
+# Пароли ролей схем (E02-03): каждый сервис получает только пароль своей схемы, чтобы он не мог
+# подключиться под владельцем чужой (архитектура 11.1); все пять нужны только init
+x-db-core: &db-core
+  DB_CORE_PASSWORD: ${DB_CORE_PASSWORD:-core_dev}
+  DB_KB_PASSWORD: ${DB_KB_PASSWORD:-kb_dev}
+  JWT_SECRET: ${JWT_SECRET:-dev_jwt_signing_key_for_local_stand} # ключ подписи сессий — только core-api
+x-db-ml: &db-ml
+  DB_ML_PASSWORD: ${DB_ML_PASSWORD:-ml_dev}
+x-db-docs: &db-docs
+  DB_DOCS_PASSWORD: ${DB_DOCS_PASSWORD:-docs_dev}
+x-db-bank: &db-bank
+  DB_BANK_PASSWORD: ${DB_BANK_PASSWORD:-bank_dev}
+
 # Хранилища и брокер: без монтирования config/
 x-infra-common: &infra-common
   restart: unless-stopped
@@ -169,7 +182,13 @@ services:
     command:
       - |
         set -e
-        mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"
+        # healthcheck MinIO проходит раньше, чем порт принимает соединения извне: ждём повторами
+        n=0
+        until mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"; do
+          n=$$((n + 1))
+          [ "$$n" -lt 30 ] || exit 1
+          sleep 2
+        done
         mc mb --ignore-existing local/documents
         mc mb --ignore-existing local/mlflow
         mc ls local
@@ -291,7 +310,7 @@ services:
     depends_on:
       init: {condition: service_completed_successfully}
     environment:
-      <<: *app-env
+      <<: [*app-env, *db-bank]
       SERVICE_NAME: bank-sim
       SERVICE_MODE: api
 
@@ -302,7 +321,7 @@ services:
       init: {condition: service_completed_successfully}
       mlflow: {condition: service_healthy}
     environment:
-      <<: *app-env
+      <<: [*app-env, *db-ml]
       SERVICE_NAME: ml-service
       SERVICE_MODE: api
 
@@ -312,7 +331,7 @@ services:
     depends_on:
       init: {condition: service_completed_successfully}
     environment:
-      <<: *app-env
+      <<: [*app-env, *db-ml]
       SERVICE_NAME: ml-service
       SERVICE_MODE: consumer
 
@@ -322,7 +341,7 @@ services:
     depends_on:
       init: {condition: service_completed_successfully}
     environment:
-      <<: *app-env
+      <<: [*app-env, *db-ml]
       SERVICE_NAME: ml-service
       SERVICE_MODE: relay
 
@@ -334,7 +353,7 @@ services:
       ml-service: {condition: service_healthy}
       bank-sim: {condition: service_healthy}
     environment:
-      <<: *app-env
+      <<: [*app-env, *db-core]
       SERVICE_NAME: core-api
       SERVICE_MODE: api
 
@@ -344,7 +363,7 @@ services:
     depends_on:
       init: {condition: service_completed_successfully}
     environment:
-      <<: *app-env
+      <<: [*app-env, *db-core]
       SERVICE_NAME: core-api
       SERVICE_MODE: consumer
 
@@ -354,7 +373,7 @@ services:
     depends_on:
       init: {condition: service_completed_successfully}
     environment:
-      <<: *app-env
+      <<: [*app-env, *db-core]
       SERVICE_NAME: core-api
       SERVICE_MODE: relay
 
@@ -365,7 +384,7 @@ services:
       init: {condition: service_completed_successfully}
       clamav: {condition: service_healthy}
     environment:
-      <<: *app-env
+      <<: [*app-env, *db-docs]
       SERVICE_NAME: doc-service
       SERVICE_MODE: consumer
 
@@ -375,7 +394,7 @@ services:
     depends_on:
       init: {condition: service_completed_successfully}
     environment:
-      <<: *app-env
+      <<: [*app-env, *db-docs]
       SERVICE_NAME: doc-service
       SERVICE_MODE: relay
 
@@ -390,8 +409,9 @@ services:
       SERVICE_NAME: web
       SERVICE_MODE: api
 
-  # Заглушка init (E02-02.4): прикладные сервисы стартуют после неё. Миграции, топики, seed и
-  # регистрация моделей добавляются в E02-03, E02-04, E02-06 без изменения графа зависимостей.
+  # Init (E02-06): расширения и роли БД, миграции пяти схем, топики и схемы Registry, seed
+  # синтетического реестра, проверка MLflow и LLM. Идемпотентен; прикладные сервисы ждут его
+  # завершения. Бакеты MinIO создаёт minio-init, БД MLflow — mlflow-db-init.
   init:
     mem_limit: 128m
     <<: [*app-common, *core-api-image]
@@ -401,9 +421,11 @@ services:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
       redpanda: {condition: service_healthy}
+      mlflow: {condition: service_healthy}
       minio-init: {condition: service_completed_successfully}
-    entrypoint: ["python", "-c", "print('init: nothing to do yet')"]
-    environment: *app-env
+    entrypoint: ["python", "-m", "cabinet_common.init"]
+    environment:
+      <<: [*app-env, *db-core, *db-ml, *db-docs, *db-bank]
 
   # --- Локальная LLM -----------------------------------------------------------------------
   # Прикладные сервисы от неё не зависят: при недоступной LLM подбор идёт через форму (РШ-9).

@@ -1,0 +1,16 @@
+{
+  "inn": "7812345675",
+  "kpp": "781201001",
+  "ogrn": "1187846001232",
+  "name": "ООО «Закрытая вымышленная компания»",
+  "opf": "LLC",
+  "manager_name": "Примеров Сергей Олегович",
+  "address": "г. Санкт-Петербург, пр. Придуманный, д. 3",
+  "okved": "47.59",
+  "industry_group": "G01",
+  "registry_status": "LIQUIDATED",
+  "registered_at": "2018-04-10",
+  "liquidated_at": "2025-06-30",
+  "origin": "SYNTHETIC_REGISTRY",
+  "fetched_at": "2026-10-14T09:00:00+07:00"
+}
