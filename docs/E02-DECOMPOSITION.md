@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | E02-09 Python-монорепозиторий | ✅ выполнено (2026-10-21) | 7 из 7 | Коммит `8b801b5`; `make check` и `pre-commit` зелёные |
 | E02-01 Структура монорепозитория | ✅ выполнено (2026-10-21) | 4 из 4 | Коммит `917beb6`; 20 тестов passed |
-| E02-10 Базовые образы | ⬜ не начато | 0 из 5 | — |
+| E02-10 Базовые образы | ✅ выполнено (2026-10-21) | 5 из 5 | Сборка пяти образов, `docker run … id`, три режима проверены |
 | E02-11 Каркас web | ⬜ не начато | 0 из 7 | Есть только `/health` в `web/` (из E02-01.2) |
 | E02-03 Миграции БД | ⬜ не начато | 0 из 11 | — |
 | E02-04 Топики, outbox, DLQ | ⬜ не начато | 0 из 9 | — |
@@ -71,11 +71,11 @@ E02-08 (gpu, obs) — после приёмки core, Should-уровень (S)
 
 | ID | Подзадача | Оценка | Готово, когда | Статус |
 | --- | --- | --- | --- | --- |
-| E02-10.1 | Общий `deploy/docker/Dockerfile.python` (параметры `SERVICE`): stage builder на `python:3.12-slim` + `uv sync --frozen --no-dev --package <service>`; stage runtime копирует только `.venv` и код | M | Образ собирается из lock-файла, повторная сборка использует кэш слоёв | ⬜ не начато |
-| E02-10.2 | Запуск не от root (`USER app`, UID фиксирован), `PYTHONUNBUFFERED`, `HEALTHCHECK` через `python -c`/curl-less проверку | S | `docker run … id` показывает не root | ⬜ не начато |
-| E02-10.3 | Entrypoint с `SERVICE_MODE=api\|consumer\|relay` (api → uvicorn; consumer → цикл потребителя; relay → outbox-релей) | M | Один образ запускается в трёх режимах (consumer/relay пока заглушки с логом) | ⬜ не начато |
-| E02-10.4 | Зафиксировать теги базовых образов (`python:3.12.x-slim-bookworm`), проверка размера образа (≤ ориентира, записать в README), без `torch` | S | Теги не `latest`; размеры записаны | ⬜ не начато |
-| E02-10.5 | Системные зависимости по сервисам: `doc-service` (poppler/tesseract — только S5, пока отложить), `libmagic` для `python-magic`, `librdkafka` через wheel `confluent-kafka` | S | `doc-service` образ содержит `libmagic` | ⬜ не начато |
+| E02-10.1 | Общий `deploy/docker/Dockerfile.python` (параметры `SERVICE`): stage builder на `python:3.12-slim` + `uv sync --frozen --no-dev --package <service>`; stage runtime копирует только `.venv` и код | M | Образ собирается из lock-файла, повторная сборка использует кэш слоёв | ✅ выполнено |
+| E02-10.2 | Запуск не от root (`USER app`, UID фиксирован), `PYTHONUNBUFFERED`, `HEALTHCHECK` через `python -c`/curl-less проверку | S | `docker run … id` показывает не root | ✅ выполнено |
+| E02-10.3 | Entrypoint с `SERVICE_MODE=api\|consumer\|relay` (api → uvicorn; consumer → цикл потребителя; relay → outbox-релей) | M | Один образ запускается в трёх режимах (consumer/relay пока заглушки с логом) | ✅ выполнено |
+| E02-10.4 | Зафиксировать теги базовых образов (`python:3.12.x-slim-bookworm`), проверка размера образа (≤ ориентира, записать в README), без `torch` | S | Теги не `latest`; размеры записаны | ✅ выполнено |
+| E02-10.5 | Системные зависимости по сервисам: `doc-service` (poppler/tesseract — только S5, пока отложить), `libmagic` для `python-magic`, `librdkafka` через wheel `confluent-kafka` | S | `doc-service` образ содержит `libmagic` | ✅ выполнено |
 
 ## E02-11. Каркас web (Frontend, M)
 

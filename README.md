@@ -32,6 +32,25 @@ uv run pre-commit install
 
 Структура сервиса: `src/<пакет>/{api,app,domain,adapters}` (слои «API → прикладная логика → домен → адаптеры»), `tests/`, `GET /health`.
 
+## Docker-образы
+
+Один `deploy/docker/Dockerfile.python` на все сервисы (multi-stage: `uv sync --frozen --no-dev --package <service>`, запуск от пользователя `app`, UID 10001). Контекст сборки — корень репозитория. Режим задаёт `SERVICE_MODE` (`api` по умолчанию | `consumer` | `relay`; в двух последних пока заглушка с логом до E02-04).
+
+```bash
+docker build -f deploy/docker/Dockerfile.python \
+  --build-arg SERVICE=core-api --build-arg APP_MODULE=core_api.main:app -t alfacase/core-api:dev .
+```
+
+| Сервис | `SERVICE` | `APP_MODULE` | Доп. параметры |
+| --- | --- | --- | --- |
+| core-api | `core-api` | `core_api.main:app` | — |
+| ml-service | `ml-service` | `ml_service.main:app` | — |
+| doc-service | `doc-service` | `doc_service.main:app` | `--build-arg APT_PACKAGES=libmagic1` |
+| bank-sim | `bank-sim` | `bank_sim.main:app` | — |
+| web | `web` | `cabinet_web.main:app` | — |
+
+Базовый образ — `python:3.12.8-slim-bookworm`, `uv` — `0.13.4` (теги зафиксированы, без `latest`; `torch` в образы не входит). Размеры на 2026-10-21 (`docker images`): core-api 215 МБ, ml-service 215 МБ, doc-service 222 МБ, bank-sim 212 МБ, web 217 МБ. Числовой порог не задан, значения служат базой для сравнения.
+
 ## Источники правды
 
 Бизнес-требования кейса → `docs/contracts/` → ТЗ → архитектура (порядок и правила работы — `CLAUDE.md`, задачи — `docs/BACKLOG.md`).
