@@ -57,7 +57,7 @@ strict = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 addopts = "--import-mode=importlib"
-testpaths = ["libs", "services", "web", "tests"]
+testpaths = ["libs", "services", "web", "tests", "config"]
 markers = [
     "unit: быстрые тесты без внешних зависимостей",
     "integration: требуют поднятых хранилищ/брокера",
