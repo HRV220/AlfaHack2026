@@ -33,8 +33,16 @@ def test_env_example_describes_default_mode() -> None:
 
 
 def test_env_example_has_no_secrets() -> None:
-    text = ENV_EXAMPLE.read_text(encoding="utf-8").lower()
-    assert not re.search(r"^(\w*(key|token|secret)\w*)=\S+", text, flags=re.MULTILINE)
+    """Значения переменных с паролем, ключом, токеном или секретом — только учебные (с «dev»)."""
+    secret_name = re.compile(r"(PASSWORD|SECRET|KEY|TOKEN)", re.IGNORECASE)
+    for line in ENV_EXAMPLE.read_text(encoding="utf-8").splitlines():
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, value = line.split("=", 1)
+        if secret_name.search(name) and value.strip():
+            assert "dev" in value.lower(), (
+                f"{name}: в .env.example допустимы только учебные значения"
+            )
 
 
 @pytest.mark.skipif(shutil.which("docker") is None, reason="docker не установлен")
@@ -55,6 +63,9 @@ def test_edge_config_streams_sse_and_limits_requests() -> None:
     assert "proxy_buffering off" in api
     assert re.search(r"proxy_read_timeout\s+\d+s", api)
     assert "limit_req zone=api" in api
+    web = text[text.index("location / {") :]
+    assert "limit_req zone=web" in web
+    assert text.count("X-Forwarded-For $remote_addr") == 2  # не доверяем заголовку клиента
     assert "limit_req_zone" in text
 
 

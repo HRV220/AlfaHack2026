@@ -220,7 +220,8 @@ services:
       start_period: 15s
 
   # --- Антивирус и ML-реестр ---------------------------------------------------------------
-  # ClamAV работает без сети: сигнатуры лежат в образе (и копируются в том clamav-db), freshclam выключен
+  # ClamAV работает без обновления сигнатур и без доступа в интернет: сигнатуры лежат в образе (копируются
+  # в том clamav-db), freshclam выключен. Сетевой изоляции от других сервисов нет: doc-service ходит по TCP
   clamav:
     mem_limit: 1536m
     <<: *infra-common
@@ -266,11 +267,12 @@ services:
       mlflow-db-init: {condition: service_completed_successfully}
       minio-init: {condition: service_completed_successfully}
     environment:
+      # Пароль подставляется в URI как есть: в POSTGRES_PASSWORD не должно быть @ / : # ? %
+      MLFLOW_BACKEND_STORE_URI: postgresql://${POSTGRES_USER:-cabinet}:${POSTGRES_PASSWORD:-cabinet_dev}@postgres:5432/mlflow
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-cabinet}
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-cabinet_dev_secret}
     command:
-      - --backend-store-uri=postgresql://${POSTGRES_USER:-cabinet}:${POSTGRES_PASSWORD:-cabinet_dev}@postgres:5432/mlflow
       - --default-artifact-root=s3://mlflow/
     ports:
       - "127.0.0.1:${MLFLOW_PORT:-5000}:5000"
