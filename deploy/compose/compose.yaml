@@ -28,6 +28,9 @@ x-app-env: &app-env
   S3_ENDPOINT_URL: http://minio:9000
   S3_ACCESS_KEY: ${MINIO_ROOT_USER:-cabinet}
   S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-cabinet_dev_secret}
+  MLFLOW_TRACKING_URI: http://mlflow:5000
+  CLAMD_HOST: clamav
+  CLAMD_PORT: "3310"
 
 # Хранилища и брокер: без монтирования config/
 x-infra-common: &infra-common
@@ -202,6 +205,59 @@ services:
       retries: 6
       start_period: 15s
 
+  # --- Антивирус и ML-реестр ---------------------------------------------------------------
+  # ClamAV работает без сети: сигнатуры лежат в образе (и копируются в том clamav-db), freshclam выключен
+  clamav:
+    <<: *infra-common
+    image: clamav/clamav:1.4.6
+    environment:
+      CLAMAV_NO_FRESHCLAMD: "true"
+      CLAMAV_NO_MILTERD: "true"
+    volumes:
+      - clamav-db:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/clamdcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  # База MLflow создаётся отдельно от прикладных схем (они — в миграциях E02-03); повтор безопасен
+  mlflow-db-init:
+    <<: *infra-common
+    restart: "no"
+    image: pgvector/pgvector:0.8.0-pg16
+    depends_on:
+      postgres: {condition: service_healthy}
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-cabinet}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-cabinet_dev}
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        psql -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='mlflow'" | grep -q 1           || psql -d postgres -c "CREATE DATABASE mlflow"
+
+  mlflow:
+    <<: *infra-common
+    image: alfacase/mlflow:dev
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.mlflow
+    depends_on:
+      mlflow-db-init: {condition: service_completed_successfully}
+      minio-init: {condition: service_completed_successfully}
+    environment:
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-cabinet}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-cabinet_dev_secret}
+    command:
+      - --backend-store-uri=postgresql://${POSTGRES_USER:-cabinet}:${POSTGRES_PASSWORD:-cabinet_dev}@postgres:5432/mlflow
+      - --default-artifact-root=s3://mlflow/
+    ports:
+      - "127.0.0.1:${MLFLOW_PORT:-5000}:5000"
+
   # --- Прикладные сервисы ------------------------------------------------------------------
   # api, consumer и relay одного сервиса — отдельные контейнеры одного образа (SERVICE_MODE)
   bank-sim:
@@ -217,6 +273,7 @@ services:
     <<: [*app-common, *ml-service-image]
     depends_on:
       init: {condition: service_completed_successfully}
+      mlflow: {condition: service_healthy}
     environment:
       <<: *app-env
       SERVICE_NAME: ml-service
@@ -273,6 +330,7 @@ services:
     <<: [*app-common, *doc-service-image]
     depends_on:
       init: {condition: service_completed_successfully}
+      clamav: {condition: service_healthy}
     environment:
       <<: *app-env
       SERVICE_NAME: doc-service
