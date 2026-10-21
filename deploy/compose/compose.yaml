@@ -1,7 +1,7 @@
 # Профиль core (архитектура 16, NFR-01): пути в файле — от корня репозитория (--project-directory .):
 #   docker compose --project-directory . -f deploy/compose/compose.yaml
 #   --profile core up -d   (цели make up / make down). Переменные берутся из .env в корне; без него
-# работают значения по умолчанию для разработки. Теги образов зафиксированы (NFR-20), `latest` не используется.
+# работают значения по умолчанию для разработки. Теги образов зафиксированы, плавающих тегов нет (NFR-20).
 name: cabinet
 
 # --- Общие блоки ---------------------------------------------------------------------------
@@ -47,6 +47,13 @@ x-app-common: &app-common
   profiles: [core]
   volumes:
     - ./config:/app/config:ro
+  # Проверка из образа: в режиме api опрашивает /health, у consumer и relay — процесс жив
+  healthcheck:
+    test: ["CMD", "python", "-m", "cabinet_common.entrypoint", "--healthcheck"]
+    interval: 15s
+    timeout: 5s
+    retries: 3
+    start_period: 20s
 
 # Образ каждого прикладного сервиса собирается из deploy/docker/Dockerfile.python (контекст — корень)
 x-core-api-image: &core-api-image
@@ -267,6 +274,12 @@ services:
       - --default-artifact-root=s3://mlflow/
     ports:
       - "127.0.0.1:${MLFLOW_PORT:-5000}:5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:5000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   # --- Прикладные сервисы ------------------------------------------------------------------
   # api, consumer и relay одного сервиса — отдельные контейнеры одного образа (SERVICE_MODE)
@@ -381,6 +394,7 @@ services:
     mem_limit: 128m
     <<: [*app-common, *core-api-image]
     restart: "no"
+    healthcheck: {disable: true}
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}

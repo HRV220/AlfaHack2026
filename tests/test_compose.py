@@ -1,5 +1,6 @@
 """Статические проверки Compose-профиля core (E02-02): теги, переменные режима по умолчанию."""
 
+import json
 import re
 import shutil
 import subprocess
@@ -63,3 +64,36 @@ def test_edge_config_tls_and_security_headers() -> None:
     for header in ("Strict-Transport-Security", "X-Content-Type-Options", "X-Frame-Options"):
         assert header in text
     assert "server_tokens off" in text
+
+
+def compose_config() -> dict[str, dict[str, object]]:
+    cmd = ["docker", "compose", "--project-directory", str(ROOT), "-f", str(COMPOSE)]
+    out = subprocess.run(  # noqa: S603
+        [*cmd, "--profile", "core", "config", "--format", "json"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    services: dict[str, dict[str, object]] = json.loads(out.stdout)["services"]
+    return services
+
+
+@pytest.mark.skipif(shutil.which("docker") is None, reason="docker не установлен")
+def test_every_resident_service_has_healthcheck() -> None:
+    services = compose_config()
+    resident = {n: s for n, s in services.items() if s.get("restart") != "no"}
+    assert resident
+    missing = [
+        n
+        for n, s in resident.items()
+        if not s.get("healthcheck") or s["healthcheck"].get("disable")  # type: ignore[attr-defined]
+    ]
+    assert missing == []
+
+
+@pytest.mark.skipif(shutil.which("docker") is None, reason="docker не установлен")
+def test_dependencies_wait_for_healthy_or_completed() -> None:
+    allowed = {"service_healthy", "service_completed_successfully"}
+    for name, service in compose_config().items():
+        for dep, spec in (service.get("depends_on") or {}).items():  # type: ignore[attr-defined]
+            assert spec["condition"] in allowed, f"{name} -> {dep}: {spec['condition']}"
