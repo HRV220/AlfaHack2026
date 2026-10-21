@@ -10,7 +10,7 @@
 
 | Задача | Статус | Подзадач выполнено | Основание |
 | --- | --- | --- | --- |
-| E02-09 Python-монорепозиторий | ✅ выполнено (2026-10-21) | 7 из 7 | Коммит `8b801b5`; `make check` и `pre-commit` зелёные |
+| E02-09 Python-монорепозиторий | ✅ выполнено (2026-10-21) | 7 из 7 | Коммиты `8b801b5`, `a3a05f5`, `a5a3daf`, `1b413e4`; `make check` и `pre-commit` зелёные |
 | E02-01 Структура монорепозитория | ✅ выполнено (2026-10-21) | 4 из 4 | Коммит `917beb6`; 20 тестов passed |
 | E02-10 Базовые образы | ✅ выполнено (2026-10-21) | 5 из 5 | Сборка пяти образов, `docker run … id`, три режима проверены |
 | E02-11 Каркас web | ⬜ не начато | 0 из 7 | Есть только `/health` в `web/` (из E02-01.2) |
@@ -52,10 +52,10 @@ E02-08 (gpu, obs) — после приёмки core, Should-уровень (S)
 | --- | --- | --- | --- | --- |
 | E02-09.1 | Корневой `pyproject.toml` с `[tool.uv.workspace]` (members: `services/*`, `libs/*`), фиксация Python 3.12 (`.python-version`, `requires-python`) | S | `uv sync` проходит с нуля | ✅ выполнено |
 | E02-09.2 | `pyproject.toml` на сервисы `core-api`, `ml-service`, `doc-service`, `bank-sim`, `web`: минимальные зависимости из раздела 21, `[tool.uv.sources]` на `libs/*` | M | `uv sync --all-packages` собирает все пакеты; сервисы не импортируют друг друга | ✅ выполнено |
-| E02-09.3 | Пакеты `libs/common` (настройки через `pydantic-settings`, логирование `structlog`, `correlation_id`; заглушки JWT, outbox, идемпотентность), `libs/contracts` (пустой пакет-приёмник генерации из E01-10), `libs/featurebuilder` (каркас) | M | Импорт `libs.common`, `libs.contracts`, `libs.featurebuilder` из сервисов работает | 🔶 частично: нет заглушек JWT, outbox, идемпотентности |
+| E02-09.3 | Пакеты `libs/common` (настройки через `pydantic-settings`, логирование `structlog`, `correlation_id`; заглушки JWT, outbox, идемпотентность), `libs/contracts` (пустой пакет-приёмник генерации из E01-10), `libs/featurebuilder` (каркас) | M | Импорт `libs.common`, `libs.contracts`, `libs.featurebuilder` из сервисов работает | ✅ выполнено (контракты `TokenService`, `OutboxWriter`/`OutboxReader`, `ProcessedEvents`) |
 | E02-09.4 | Конфигурация `ruff` (lint+format), `mypy` (strict для `libs/*`, обычный для сервисов), `pytest` (`asyncio_mode=auto`, маркеры `unit/integration/e2e`) | S | `ruff check`, `mypy`, `pytest` проходят на пустом каркасе | ✅ выполнено |
-| E02-09.5 | `.pre-commit-config.yaml` (ruff, ruff-format, mypy, проверка `uv.lock` актуален, trailing whitespace, detect-secrets) | S | `pre-commit run --all-files` зелёный | 🔶 частично: `detect-private-key` вместо `detect-secrets` |
-| E02-09.6 | Единая точка запуска проверок: `Makefile`/`justfile` (`sync`, `lint`, `type`, `test`, `check`, `up`, `down`), `uv.lock` в репозитории | S | `make check` одной командой | 🔶 частично: нет целей `up` и `down` (появятся с Compose) |
+| E02-09.5 | `.pre-commit-config.yaml` (ruff, ruff-format, mypy, проверка `uv.lock` актуален, trailing whitespace, detect-secrets) | S | `pre-commit run --all-files` зелёный | ✅ выполнено (`detect-secrets` + `.secrets.baseline`) |
+| E02-09.6 | Единая точка запуска проверок: `Makefile`/`justfile` (`sync`, `lint`, `type`, `test`, `check`, `up`, `down`), `uv.lock` в репозитории | S | `make check` одной командой | ✅ выполнено (`up`/`down` работают при наличии `deploy/compose/compose.yaml`, E02-02) |
 | E02-09.7 | Файл ADR: выбор `uv`, граница `libs/*` ↔ `services/*`, запись в раздел 21 и журнал ADR 20.3 | S | ADR добавлен | ✅ выполнено |
 
 ## E02-01. Структура монорепозитория (Backend, M)
