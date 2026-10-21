@@ -1,7 +1,7 @@
 COMPOSE_FILE ?= deploy/compose/compose.yaml
 COMPOSE = docker compose --project-directory . -f $(COMPOSE_FILE)
 
-.PHONY: sync lock-check lint format type test check up down compose-file-check
+.PHONY: sync lock-check lint format type test check up down compose-file-check migrate migrate-test er-diagram
 
 sync:
 	uv sync --all-packages
@@ -36,3 +36,14 @@ down:
 
 compose-file-check:
 	@test -f $(COMPOSE_FILE) || { echo "$(COMPOSE_FILE) not found: the core profile is added in E02-02"; exit 1; }
+
+# Миграции всех схем (bootstrap от суперпользователя POSTGRES_*, затем alembic под ролями схем).
+migrate:
+	uv run python -c "from cabinet_common.db.bootstrap import bootstrap; from cabinet_common.db.migrate import upgrade_all; from cabinet_common.db.schemas import admin_url; bootstrap(admin_url()); upgrade_all()"
+
+# Тест миграций на одноразовом PostgreSQL в Docker: подъём с нуля, downgrade, изоляция, RLS.
+migrate-test:
+	bash scripts/with_test_postgres.sh uv run pytest -m integration tests/test_migrations.py
+
+er-diagram:
+	bash scripts/with_test_postgres.sh uv run python scripts/_er_run.py

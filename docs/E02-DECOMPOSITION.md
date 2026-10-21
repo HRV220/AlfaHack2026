@@ -14,7 +14,7 @@
 | E02-01 Структура монорепозитория | ✅ выполнено (2026-10-21) | 4 из 4 | Коммит `917beb6`; 20 тестов passed |
 | E02-10 Базовые образы | ✅ выполнено (2026-10-21) | 5 из 5 | Сборка пяти образов, `docker run … id`, три режима проверены |
 | E02-11 Каркас web | ⬜ не начато | 0 из 7 | Есть только `/health` в `web/` (из E02-01.2) |
-| E02-03 Миграции БД | ⬜ не начато | 0 из 11 | — |
+| E02-03 Миграции БД | ✅ выполнено (2026-10-21) | 11 из 11 | Пять Alembic-сред, `make migrate-test` (24 теста), `make er-diagram`, ADR 24 |
 | E02-04 Топики, outbox, DLQ | ⬜ не начато | 0 из 9 | — |
 | E02-05 Конфиги с версией | ✅ выполнено (2026-10-21) | 8 из 8 | Семь файлов `config/*.yaml` со схемами в `cabinet_common.config`, `load_all_configs`, `pytest config/` зелёный |
 | E02-02 Compose-профиль `core` | ✅ выполнено (2026-10-21) | 11 из 11 | `deploy/compose/compose.yaml` (23 контейнера), `make up` с чистых томов — все постоянные `healthy`; `tests/test_compose.py`, `deploy/compose/check_limits.py` |
@@ -95,17 +95,17 @@ E02-08 (gpu, obs) — после приёмки core, Should-уровень (S)
 
 | ID | Подзадача | Оценка | Готово, когда | Статус |
 | --- | --- | --- | --- | --- |
-| E02-03.1 | Alembic-окружение для каждого сервиса (`core`, `bank`, `ml`, `docs`, `kb`): `env.py` с `version_table_schema`, async-подключение (psycopg 3), отдельные роли БД на сервис с правами только на свою схему | M | `alembic upgrade head` создаёт схему и таблицу версий; роль сервиса не читает чужую схему (тест) | ⬜ не начато |
-| E02-03.2 | Расширения: `vector` (pgvector), `pgcrypto`/`uuid-ossp` — отдельная миграция «bootstrap» от суперпользователя в init | S | `CREATE EXTENSION` идемпотентно | ⬜ не начато |
-| E02-03.3 | `core`, часть 1 — вход и профиль: `registry_snapshot`, `company`, `applicant_role`, `need`, `recommendation` (неизменяемый снимок) | M | Поля по `domain.schema.json`; `recommendation` без `UPDATE` (триггер или права) | ⬜ не начато |
-| E02-03.4 | `core`, часть 2 — заявка: `application`, `application_version`, `status_history`, `document`, `consent`, `decision`, `clarification_request`, `contract` | M | Связи по ER-диаграмме 11.1; `decision` неизменяем | ⬜ не начато |
-| E02-03.5 | `core`, часть 3 — ассистент и прочее: `insight`, `chat_session`, `message`, `pending_action`, `escalation`, `feed_item`, `feed_impression`, `outbox`, `processed_events` | M | Таблицы созданы; индексы по `company_id`, `application_id` | ⬜ не начато |
-| E02-03.6 | Row-Level Security по `company_id` для клиентских таблиц `core` (политики + `SET LOCAL app.company_id`) и тест изоляции между двумя ИНН | M | Тест: запрос под чужим `company_id` возвращает 0 строк | ⬜ не начато |
-| E02-03.7 | `bank`: `account`, `transaction`, `credit_record`, `fraud_flag`, `ground_truth` | S | Индексы по ИНН и дате | ⬜ не начато |
-| E02-03.8 | `ml`: `profile_snapshot`, `enriched_transaction`, `recurring_payment`, `forecast`, `cash_gap`, `scoring_log`, `recommendation_log`, `whatif_log`, `outbox`, `processed_events` | M | Миграция применяется на чистой БД | ⬜ не начато |
-| E02-03.9 | `docs`: `parse_job`, `extracted_field`, `validation_result`, `outbox`, `processed_events`; `kb`: `article`, `chunk` (вектор + `tsvector`, GIN/HNSW-индексы) | M | Индекс полнотекстового и векторного поиска создан | ⬜ не начато |
-| E02-03.10 | Тест миграций: подъём с нуля, `downgrade -1`, повторный `upgrade`; проверка отсутствия межсхемных FK | S | Скрипт `make migrate-test` зелёный | ⬜ не начато |
-| E02-03.11 | Первичная ER-диаграмма по схемам в `docs/data-model/` (экспорт из миграций) — основа для DEL-07 | S | Файл в репозитории | ⬜ не начато |
+| E02-03.1 | Alembic-окружение для каждого сервиса (`core`, `bank`, `ml`, `docs`, `kb`): `env.py` с `version_table_schema`, async-подключение (psycopg 3), отдельные роли БД на сервис с правами только на свою схему | M | `alembic upgrade head` создаёт схему и таблицу версий; роль сервиса не читает чужую схему (тест) | ✅ выполнено (2026-10-21) |
+| E02-03.2 | Расширения: `vector` (pgvector), `pgcrypto`/`uuid-ossp` — отдельная миграция «bootstrap» от суперпользователя в init | S | `CREATE EXTENSION` идемпотентно | ✅ выполнено (2026-10-21) |
+| E02-03.3 | `core`, часть 1 — вход и профиль: `registry_snapshot`, `company`, `applicant_role`, `need`, `recommendation` (неизменяемый снимок) | M | Поля по `domain.schema.json`; `recommendation` без `UPDATE` (триггер или права) | ✅ выполнено (2026-10-21) |
+| E02-03.4 | `core`, часть 2 — заявка: `application`, `application_version`, `status_history`, `document`, `consent`, `decision`, `clarification_request`, `contract` | M | Связи по ER-диаграмме 11.1; `decision` неизменяем | ✅ выполнено (2026-10-21) |
+| E02-03.5 | `core`, часть 3 — ассистент и прочее: `insight`, `chat_session`, `message`, `pending_action`, `escalation`, `feed_item`, `feed_impression`, `outbox`, `processed_events` | M | Таблицы созданы; индексы по `company_id`, `application_id` | ✅ выполнено (2026-10-21) |
+| E02-03.6 | Row-Level Security по `company_id` для клиентских таблиц `core` (политики + `SET LOCAL app.company_id`) и тест изоляции между двумя ИНН | M | Тест: запрос под чужим `company_id` возвращает 0 строк | ✅ выполнено (2026-10-21) |
+| E02-03.7 | `bank`: `account`, `transaction`, `credit_record`, `fraud_flag`, `ground_truth` | S | Индексы по ИНН и дате | ✅ выполнено (2026-10-21) |
+| E02-03.8 | `ml`: `profile_snapshot`, `enriched_transaction`, `recurring_payment`, `forecast`, `cash_gap`, `scoring_log`, `recommendation_log`, `whatif_log`, `outbox`, `processed_events` | M | Миграция применяется на чистой БД | ✅ выполнено (2026-10-21) |
+| E02-03.9 | `docs`: `parse_job`, `extracted_field`, `validation_result`, `outbox`, `processed_events`; `kb`: `article`, `chunk` (вектор + `tsvector`, GIN/HNSW-индексы) | M | Индекс полнотекстового и векторного поиска создан | ✅ выполнено (2026-10-21) |
+| E02-03.10 | Тест миграций: подъём с нуля, `downgrade -1`, повторный `upgrade`; проверка отсутствия межсхемных FK | S | Скрипт `make migrate-test` зелёный | ✅ выполнено (2026-10-21) |
+| E02-03.11 | Первичная ER-диаграмма по схемам в `docs/data-model/` (экспорт из миграций) — основа для DEL-07 | S | Файл в репозитории | ✅ выполнено (2026-10-21) |
 
 ## E02-04. Топики, Schema Registry, outbox, DLQ (Backend, M)
 

@@ -39,7 +39,9 @@ select = ["E", "F", "W", "I", "B", "UP", "S", "ASYNC"]
 ignore = ["S101"]
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests/**" = ["S"]
+"**/tests/**" = ["S", "E501"]
+"**/migrations/**" = ["S608", "E501"]
+"scripts/**" = ["S608", "E501"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -47,6 +49,7 @@ warn_unused_ignores = true
 no_implicit_optional = true
 check_untyped_defs = true
 explicit_package_bases = true
+exclude = ["/migrations/"]
 namespace_packages = true
 mypy_path = "libs/common/src:libs/contracts/src:libs/featurebuilder/src:services/core-api/src:services/ml-service/src:services/doc-service/src:services/bank-sim/src:web/src"
 
@@ -56,10 +59,10 @@ strict = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-addopts = "--import-mode=importlib"
+addopts = "--import-mode=importlib -m 'not integration'"
 testpaths = ["libs", "services", "web", "tests", "config"]
 markers = [
     "unit: быстрые тесты без внешних зависимостей",
-    "integration: требуют поднятых хранилищ/брокера",
+    "integration: требуют поднятых хранилищ/брокера (запуск: pytest -m integration)",
     "e2e: сквозные тесты на Compose-стенде",
 ]
