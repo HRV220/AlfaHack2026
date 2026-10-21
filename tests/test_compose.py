@@ -43,3 +43,23 @@ def test_compose_config_is_valid() -> None:
         [*cmd, "--profile", "core", "config", "-q"], capture_output=True, text=True, check=False
     )
     assert result.returncode == 0, result.stderr
+
+
+NGINX = ROOT / "deploy" / "compose" / "nginx" / "nginx.conf"
+
+
+def test_edge_config_streams_sse_and_limits_requests() -> None:
+    text = NGINX.read_text(encoding="utf-8")
+    api = text[text.index("location /api/") : text.index("location / {")]
+    assert "proxy_buffering off" in api
+    assert re.search(r"proxy_read_timeout\s+\d+s", api)
+    assert "limit_req zone=api" in api
+    assert "limit_req_zone" in text
+
+
+def test_edge_config_tls_and_security_headers() -> None:
+    text = NGINX.read_text(encoding="utf-8")
+    assert "listen 443 ssl" in text
+    for header in ("Strict-Transport-Security", "X-Content-Type-Options", "X-Frame-Options"):
+        assert header in text
+    assert "server_tokens off" in text

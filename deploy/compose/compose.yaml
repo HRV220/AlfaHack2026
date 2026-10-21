@@ -367,3 +367,35 @@ services:
       minio-init: {condition: service_completed_successfully}
     entrypoint: ["python", "-c", "print('init: nothing to do yet')"]
     environment: *app-env
+
+  # --- Edge ---------------------------------------------------------------------------------
+  # Самоподписанный сертификат создаётся один раз при первом старте (ключ в репозиторий не кладётся)
+  edge-certs-init:
+    <<: *infra-common
+    restart: "no"
+    image: alpine/openssl:3.3.2
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        [ -f /certs/tls.crt ] || openssl req -x509 -newkey rsa:2048 -nodes -days 825           -keyout /certs/tls.key -out /certs/tls.crt -subj "/CN=localhost"           -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+    volumes:
+      - edge-certs:/certs
+
+  edge:
+    <<: *infra-common
+    image: nginx:1.27.3-alpine
+    depends_on:
+      edge-certs-init: {condition: service_completed_successfully}
+      core-api: {condition: service_healthy}
+      web: {condition: service_healthy}
+    volumes:
+      - ./deploy/compose/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - edge-certs:/certs:ro
+    ports:
+      - "127.0.0.1:${EDGE_HTTPS_PORT:-8443}:443"
+    healthcheck:
+      test: ["CMD", "wget", "--no-check-certificate", "-q", "-O", "/dev/null", "https://127.0.0.1/edge/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
