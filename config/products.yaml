@@ -1,0 +1,110 @@
+# Каталог продуктов (ТЗ 4.3, CAT-01). Поля 1:1 с `Product` из domain.schema.json;
+# `version` файла попадает в снимок подбора как catalog_version. Ставки и доли — десятичные (0.18).
+version: "1.0.0"
+products:
+  - code: P1
+    name: Овердрафт
+    amount_min: 100000
+    amount_max: 5000000
+    amount_max_rule: "Не больше 50% средних поступлений за 6 месяцев итого"
+    term_min_months: 12
+    term_max_months: 12
+    base_rate: 0.17
+    grade_surcharge_applies: true
+    commission_pct: 0
+    deferral_months: 0
+    deferral_min_term_months: 0
+    collateral_rule: "Обеспечение не требуется"
+    eligibility_rule: "Поступления на счёт в каждом из последних 6 месяцев"
+    fast: true
+    security: {required: none}
+
+  - code: P2
+    name: Оборотный кредит
+    amount_min: 300000
+    amount_max: 10000000
+    amount_max_rule: null
+    term_min_months: 3
+    term_max_months: 24
+    base_rate: 0.18
+    grade_surcharge_applies: true
+    commission_pct: 0
+    deferral_months: 0
+    deferral_min_term_months: 0
+    collateral_rule: "Свыше 3 млн ₽ требуется поручитель"
+    eligibility_rule: "Бизнесу не менее 6 месяцев"
+    fast: true  # ТЗ: «Да, если сумма ≤ 3 млн» — условие по сумме проверяет движок
+    security: {required: guarantor, amount_over: 3000000}
+
+  - code: P3
+    name: Кредитная линия
+    amount_min: 1000000
+    amount_max: 30000000
+    amount_max_rule: null
+    term_min_months: 12
+    term_max_months: 36
+    base_rate: 0.175
+    grade_surcharge_applies: true
+    commission_pct: 0.005
+    deferral_months: 0
+    deferral_min_term_months: 0
+    collateral_rule: "Требуется поручитель"
+    eligibility_rule: "Бизнесу не менее 12 месяцев; средние поступления за 6 месяцев не менее 1 млн ₽"
+    fast: false
+    security: {required: guarantor}
+
+  - code: P4
+    name: Кредит на развитие
+    amount_min: 1000000
+    amount_max: 30000000
+    amount_max_rule: null
+    term_min_months: 12
+    term_max_months: 60
+    base_rate: 0.19
+    grade_surcharge_applies: true
+    commission_pct: 0
+    deferral_months: 3
+    deferral_min_term_months: 24
+    collateral_rule: "От 5 млн ₽ требуется залог или поручитель; при сроке от 24 месяцев — отсрочка основного долга 3 месяца"
+    eligibility_rule: "Бизнесу не менее 12 месяцев"
+    fast: false
+    security:
+      required: collateral_or_guarantor
+      amount_from: 5000000
+      collateral_kinds: [equipment, vehicle, real_estate]
+
+  - code: P5
+    name: Кредит под залог
+    amount_min: 500000
+    amount_max: 50000000
+    amount_max_rule: "Не больше 70% стоимости залога"
+    term_min_months: 12
+    term_max_months: 84
+    base_rate: 0.15
+    grade_surcharge_applies: true
+    commission_pct: 0
+    deferral_months: 0
+    deferral_min_term_months: 0
+    collateral_rule: "Залог: оборудование, транспорт или недвижимость"
+    eligibility_rule: "Указан залог с его стоимостью"
+    fast: false
+    security:
+      required: collateral
+      collateral_kinds: [equipment, vehicle, real_estate]
+
+  - code: P6
+    name: Льготный кредит (условная программа)
+    amount_min: 500000
+    amount_max: 20000000
+    amount_max_rule: null
+    term_min_months: 12
+    term_max_months: 36
+    base_rate: 0.10
+    grade_surcharge_applies: false
+    commission_pct: 0
+    deferral_months: 0
+    deferral_min_term_months: 0
+    collateral_rule: "Требуется поручитель"
+    eligibility_rule: "Отраслевая группа G04, G07, G08 или G11; бизнесу не менее 12 месяцев"
+    fast: false
+    security: {required: guarantor}
