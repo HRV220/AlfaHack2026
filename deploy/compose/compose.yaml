@@ -18,6 +18,13 @@ x-app-env: &app-env
   CHECKING_DELAY_SEC: ${CHECKING_DELAY_SEC:-5}
   CONFIG_DIR: /app/config
 
+# Хранилища и брокер: без монтирования config/
+x-infra-common: &infra-common
+  restart: unless-stopped
+  logging: *logging
+  networks: [backend]
+  profiles: [core]
+
 x-app-common: &app-common
   restart: unless-stopped
   logging: *logging
@@ -48,10 +55,79 @@ volumes:
   edge-certs:
 
 services:
+  # --- Хранилища ---------------------------------------------------------------------------
+  postgres:
+    <<: *infra-common
+    image: pgvector/pgvector:0.8.0-pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cabinet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cabinet_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-cabinet}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  redis:
+    <<: *infra-common
+    image: redis:7.4.1-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # MinIO: образ bitnamilegacy (minio/minio снят с Docker Hub), версия закреплена
+  minio:
+    <<: *infra-common
+    image: bitnamilegacy/minio:2025.4.22-debian-12-r1
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-cabinet}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-cabinet_dev_secret}
+      MINIO_DEFAULT_BUCKETS: ""
+    volumes:
+      - minio-data:/bitnami/minio/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  # Одноразовое создание бакетов documents и mlflow (идемпотентно)
+  minio-init:
+    <<: *infra-common
+    restart: "no"
+    image: bitnamilegacy/minio:2025.4.22-debian-12-r1
+    depends_on:
+      minio: {condition: service_healthy}
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-cabinet}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-cabinet_dev_secret}
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"
+        mc mb --ignore-existing local/documents
+        mc mb --ignore-existing local/mlflow
+        mc ls local
+
   # Заглушка init (E02-02.4): прикладные сервисы стартуют после неё. Миграции, топики, seed и
   # регистрация моделей добавляются в E02-03, E02-04, E02-06 без изменения графа зависимостей.
   init:
     <<: [*app-common, *core-api-image]
     restart: "no"
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      minio-init: {condition: service_completed_successfully}
     entrypoint: ["python", "-c", "print('init: nothing to do yet')"]
     environment: *app-env

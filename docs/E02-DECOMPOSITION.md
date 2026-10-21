@@ -139,7 +139,7 @@ E02-08 (gpu, obs) — после приёмки core, Should-уровень (S)
 | ID | Подзадача | Оценка | Готово, когда | Статус |
 | --- | --- | --- | --- | --- |
 | E02-02.1 | `deploy/compose/compose.yaml`: сеть, тома, `profiles`, `x-` якоря (общие env, healthcheck, logging); корневой `.env.example` | M | `docker compose config` валиден | ✅ выполнено (2026-10-21) |
-| E02-02.2 | Хранилища: PostgreSQL 16 + pgvector (образ `pgvector/pgvector:pg16`, фиксированный тег), Redis 7, MinIO (+ создание бакетов `documents`, `mlflow`) — с healthcheck | M | Healthy; бакеты создаются init-ом | ⬜ не начато |
+| E02-02.2 | Хранилища: PostgreSQL 16 + pgvector (образ `pgvector/pgvector:pg16`, фиксированный тег), Redis 7, MinIO (+ создание бакетов `documents`, `mlflow`) — с healthcheck | M | Healthy; бакеты создаются init-ом | ✅ выполнено (2026-10-21) |
 | E02-02.3 | Брокер: Redpanda (Kafka API + Schema Registry) и Redpanda Console, режим `dev-container`, ограничение памяти | M | Console открывается, Registry отвечает на `/subjects` | ⬜ не начато |
 | E02-02.4 | Сервисы приложения: `core-api` (api + relay + consumer как отдельные контейнеры одного образа), `ml-service` (api + consumer + relay), `doc-service` (consumer + relay), `bank-sim` (api), `web` — зависимости `depends_on: condition: service_healthy / service_completed_successfully` (init) | L | Порядок старта соответствует разделу 16 | ⬜ не начато |
 | E02-02.5 | ClamAV (clamd, healthcheck, том для сигнатур; режим без сети — сигнатуры в образе/томе) и MLflow (backend — PostgreSQL, артефакты — MinIO) | M | `clamd PING` → PONG; MLflow UI доступен | ⬜ не начато |
