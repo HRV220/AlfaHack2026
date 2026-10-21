@@ -31,6 +31,7 @@ x-app-env: &app-env
   MLFLOW_TRACKING_URI: http://mlflow:5000
   CLAMD_HOST: clamav
   CLAMD_PORT: "3310"
+  OLLAMA_URL: http://ollama:11434
 
 # Хранилища и брокер: без монтирования config/
 x-infra-common: &infra-common
@@ -367,6 +368,23 @@ services:
       minio-init: {condition: service_completed_successfully}
     entrypoint: ["python", "-c", "print('init: nothing to do yet')"]
     environment: *app-env
+
+  # --- Локальная LLM -----------------------------------------------------------------------
+  # Прикладные сервисы от неё не зависят: при недоступной LLM подбор идёт через форму (РШ-9).
+  # Модель в образ не входит; загрузка и прогрев — E02-07.
+  ollama:
+    <<: *infra-common
+    image: ollama/ollama:0.12.3
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 10s
+      retries: 6
+      start_period: 20s
 
   # --- Edge ---------------------------------------------------------------------------------
   # Самоподписанный сертификат создаётся один раз при первом старте (ключ в репозиторий не кладётся)
