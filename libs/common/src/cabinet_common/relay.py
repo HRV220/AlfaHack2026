@@ -2,6 +2,8 @@
 
 Пачка строк блокируется `FOR UPDATE SKIP LOCKED`, поэтому параллельные релеи берут разные
 записи и не дублируют публикацию; блокировка держится до фиксации пометки `published_at`.
+За один проход берётся не более одной записи на (топик, ключ) — самая старая, — чтобы порядок
+внутри ключа сохранялся даже при сбое доставки.
 """
 
 import asyncio
@@ -10,13 +12,19 @@ from collections.abc import Callable
 from typing import Any
 
 import structlog
-from confluent_kafka import Producer
+from confluent_kafka import KafkaException, Producer
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+# Запись выбирается, только если у неё нет более старой неопубликованной записи с тем же
+# (топик, ключ): так порядок внутри ключа не нарушается ни в пачке, ни между параллельными релеями
+# (запись, заблокированную другим релеем, `NOT EXISTS` всё ещё видит неопубликованной).
 SELECT_BATCH = text(
-    "SELECT id::text AS id, topic, key, payload FROM outbox "
-    "WHERE published_at IS NULL ORDER BY created_at LIMIT :limit FOR UPDATE SKIP LOCKED"
+    "SELECT o.id::text AS id, o.topic, o.key, o.payload FROM outbox o "
+    "WHERE o.published_at IS NULL AND NOT EXISTS ("
+    "  SELECT 1 FROM outbox older WHERE older.topic = o.topic AND older.key = o.key "
+    "  AND older.published_at IS NULL AND (older.created_at, older.id) < (o.created_at, o.id)"
+    ") ORDER BY o.created_at, o.id LIMIT :limit FOR UPDATE OF o SKIP LOCKED"
 )
 MARK_PUBLISHED = text(
     "UPDATE outbox SET published_at = now(), attempts = attempts + 1 "
@@ -74,12 +82,17 @@ class OutboxRelay:
 
             for row in rows:
                 payload = row["payload"]
-                self._producer.produce(
-                    row["topic"],
-                    key=row["key"].encode(),
-                    value=json.dumps(payload, ensure_ascii=False).encode(),
-                    on_delivery=on_delivery(row["id"]),
-                )
+                try:
+                    self._producer.produce(
+                        row["topic"],
+                        key=row["key"].encode(),
+                        value=json.dumps(payload, ensure_ascii=False).encode(),
+                        on_delivery=on_delivery(row["id"]),
+                    )
+                except (KafkaException, BufferError, ValueError) as exc:
+                    # Продюсер отклонил запись сразу (например, сообщение больше лимита брокера):
+                    # считаем попытку и идём дальше, чтобы она не останавливала всю пачку.
+                    errors[row["id"]] = f"{type(exc).__name__}: {exc}"
             remaining = await asyncio.to_thread(self._producer.flush, self._flush_timeout)
             if remaining:
                 # Недоставленное убираем из очереди продюсера, иначе оно уйдёт позже и дублируется

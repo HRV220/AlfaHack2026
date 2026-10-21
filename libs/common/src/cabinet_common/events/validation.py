@@ -62,6 +62,11 @@ class EventValidator:
         topic = self.topics.get(event["type"])
         if event["source"] != topic.producer:
             problems.append(f"source: ожидался {topic.producer!r}, получен {event['source']!r}")
+        if _major(event["schema_version"]) != _major(topic.schema_version):
+            problems.append(
+                f"schema_version: {event['schema_version']!r} не совпадает по мажорной версии "
+                f"с {topic.schema_version!r} топика {topic.name}"
+            )
         data = event["data"]
         data_errors = self._data[topic.name].iter_errors(data)
         problems += [_describe(err, prefix="data") for err in data_errors]
@@ -74,6 +79,10 @@ class EventValidator:
 def _describe(err: Any, prefix: str = "") -> str:
     path = ".".join([prefix, *(str(part) for part in err.absolute_path)]).strip(".")
     return f"{path or '<корень>'}: {err.message}"
+
+
+def _major(version: str) -> str:
+    return version.split(".", 1)[0]
 
 
 def _check_time(value: str) -> list[str]:

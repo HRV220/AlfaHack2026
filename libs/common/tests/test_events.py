@@ -121,6 +121,15 @@ def test_time_needs_timezone_and_iso(validator: EventValidator, value: str) -> N
         validator.validate(event)
 
 
+def test_schema_version_major_must_match_topic(validator: EventValidator) -> None:
+    event = load_example("document.uploaded")
+    event["schema_version"] = "1.2.0"
+    validator.validate(event)  # минорная версия может отличаться
+    event["schema_version"] = "2.0.0"
+    with pytest.raises(EventValidationError, match="schema_version"):
+        validator.validate(event)
+
+
 def test_bad_correlation_id_is_rejected(validator: EventValidator) -> None:
     event = load_example("document.uploaded")
     event["correlation_id"] = "abc"

@@ -25,9 +25,9 @@ from cabinet_common.events import (
 )
 from cabinet_common.events.admin import ensure_topics
 from cabinet_common.logging import correlation_id
-from cabinet_common.outbox import OutboxWriter
+from cabinet_common.outbox import ForeignTopicError, OutboxWriter
 from cabinet_common.relay import OutboxRelay, make_producer
-from confluent_kafka import Consumer
+from confluent_kafka import Consumer, KafkaError, KafkaException
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
@@ -89,7 +89,7 @@ def uploaded(app_id: str | None = None) -> tuple[str, dict[str, Any]]:
 
 
 async def emit_uploaded(engine: AsyncEngine, count: int = 1) -> list[str]:
-    writer = OutboxWriter(VALIDATOR)
+    writer = OutboxWriter(VALIDATOR, "core-api")
     ids: list[str] = []
     async with AsyncSession(engine) as session, session.begin():
         for _ in range(count):
@@ -139,7 +139,7 @@ def read_topic(topic: str, expected: set[str], timeout: float = 30.0) -> list[An
 
 
 async def test_rollback_leaves_no_event(engine: AsyncEngine) -> None:
-    writer = OutboxWriter(VALIDATOR)
+    writer = OutboxWriter(VALIDATOR, "core-api")
     app_id, data = uploaded()
     event_id = ""
     with pytest.raises(RuntimeError):
@@ -173,7 +173,7 @@ async def test_commit_stores_valid_envelope(engine: AsyncEngine) -> None:
 
 
 async def test_invalid_event_is_not_written(engine: AsyncEngine) -> None:
-    writer = OutboxWriter(VALIDATOR)
+    writer = OutboxWriter(VALIDATOR, "core-api")
     app_id, data = uploaded()
     data["size_bytes"] = 0
     before = await count_rows(engine, "SELECT count(*) FROM outbox")
@@ -242,6 +242,117 @@ async def test_failed_delivery_keeps_record_unpublished(engine: AsyncEngine) -> 
         ).one()
     assert row.published_at is None
     assert row.attempts == 1
+
+
+class FakeProducer:
+    """Продюсер без брокера: `reject_keys` отклоняются при `produce`, `fail_keys` — при доставке."""
+
+    def __init__(self, reject_keys: set[str] = frozenset(), fail_keys: set[str] = frozenset()):  # type: ignore[assignment]
+        self.reject_keys = reject_keys
+        self.fail_keys = fail_keys
+        self.sent: list[str] = []
+        self._pending: list[tuple[str, Any]] = []
+
+    def produce(self, topic: str, key: bytes, value: bytes, on_delivery: Any) -> None:
+        if key.decode() in self.reject_keys:
+            raise KafkaException(KafkaError(KafkaError.MSG_SIZE_TOO_LARGE))
+        self.sent.append(json.loads(value)["event_id"])
+        self._pending.append((key.decode(), on_delivery))
+
+    def flush(self, timeout: float) -> int:
+        for key, callback in self._pending:
+            callback("доставка не удалась" if key in self.fail_keys else None, None)
+        self._pending.clear()
+        return 0
+
+    def purge(self) -> None:
+        self._pending.clear()
+
+
+async def clear_outbox(engine: AsyncEngine) -> None:
+    async with engine.begin() as conn:
+        await conn.execute(text("DELETE FROM outbox"))
+
+
+async def emit_for_keys(engine: AsyncEngine, keys: list[str]) -> list[str]:
+    """Событие `document.uploaded` на каждый ключ (повтор ключа — следующее событие того же ключа)."""
+    writer = OutboxWriter(VALIDATOR, "core-api")
+    ids: list[str] = []
+    async with AsyncSession(engine) as session, session.begin():
+        for key in keys:
+            _, data = uploaded(key)
+            ids.append(await writer.emit(session, "document.uploaded", key, data))
+    return ids
+
+
+async def outbox_state(engine: AsyncEngine, event_id: str) -> Any:
+    async with engine.connect() as conn:
+        return (
+            await conn.execute(
+                text("SELECT published_at, attempts FROM outbox WHERE id = CAST(:i AS uuid)"),
+                {"i": event_id},
+            )
+        ).one()
+
+
+async def test_rejected_record_does_not_block_the_batch(engine: AsyncEngine) -> None:
+    await clear_outbox(engine)
+    keys = [str(uuid.uuid4()) for _ in range(3)]
+    bad, *good = await emit_for_keys(engine, keys)
+    relay = OutboxRelay(engine, FakeProducer(reject_keys={keys[0]}))  # type: ignore[arg-type]
+
+    assert await relay.publish_batch() == 2
+
+    rejected = await outbox_state(engine, bad)
+    assert rejected.published_at is None
+    assert rejected.attempts == 1
+    for event_id in good:
+        assert (await outbox_state(engine, event_id)).published_at is not None
+
+
+async def test_same_key_events_are_published_in_creation_order(engine: AsyncEngine) -> None:
+    await clear_outbox(engine)
+    key = str(uuid.uuid4())
+    first, second = await emit_for_keys(engine, [key, key])
+    relay = OutboxRelay(engine, make_producer(KAFKA))
+
+    assert await relay.publish_batch() == 1, "за проход берётся одна запись на ключ"
+    assert (await outbox_state(engine, second)).published_at is None
+    assert await relay.publish_batch() == 1
+
+    messages = {
+        json.loads(m.value())["event_id"]: m
+        for m in read_topic("document.uploaded", {first, second})
+    }
+    assert messages[first].offset() < messages[second].offset()
+
+
+async def test_failed_event_holds_back_later_events_of_the_same_key(engine: AsyncEngine) -> None:
+    await clear_outbox(engine)
+    key = str(uuid.uuid4())
+    first, second = await emit_for_keys(engine, [key, key])
+
+    broken = FakeProducer(fail_keys={key})
+    assert await OutboxRelay(engine, broken).publish_batch() == 0  # type: ignore[arg-type]
+    assert broken.sent == [first], "второе событие ключа не должно обгонять первое"
+    assert (await outbox_state(engine, first)).attempts == 1
+    assert (await outbox_state(engine, second)).published_at is None
+
+    healthy = FakeProducer()
+    relay = OutboxRelay(engine, healthy)  # type: ignore[arg-type]
+    await relay.publish_batch()
+    await relay.publish_batch()
+    assert healthy.sent == [first, second]
+
+
+async def test_foreign_topic_is_rejected(engine: AsyncEngine) -> None:
+    writer = OutboxWriter(VALIDATOR, "core-api")  # decision.made публикует ml-service
+    data = example_data("decision.made")
+    before = await count_rows(engine, "SELECT count(*) FROM outbox")
+    with pytest.raises(ForeignTopicError):
+        async with AsyncSession(engine) as session, session.begin():
+            await writer.emit(session, "decision.made", data["decision"]["application_id"], data)
+    assert await count_rows(engine, "SELECT count(*) FROM outbox") == before
 
 
 # --- E02-04.6, E02-04.7: consumer, повторы, DLQ -----------------------------------------------
@@ -387,16 +498,15 @@ async def test_invalid_message_goes_straight_to_dlq(engine: AsyncEngine) -> None
 
 async def test_outbox_to_consumer_end_to_end_keeps_correlation_id(engine: AsyncEngine) -> None:
     trace = uuid.uuid4().hex
-    writer = OutboxWriter(VALIDATOR)
+    writer = OutboxWriter(VALIDATOR, "core-api")
     app_id, uploaded_data = uploaded()
-    decision_data = example_data("decision.made")
-    decision_data["decision"]["application_id"] = app_id
+    submitted_data = example_data("application.submitted", application_id=app_id)
 
     token = correlation_id.set(trace)  # как это сделал бы HTTP-middleware на входе запроса
     try:
         async with AsyncSession(engine) as session, session.begin():
             first = await writer.emit(session, "document.uploaded", app_id, uploaded_data)
-            second = await writer.emit(session, "decision.made", app_id, decision_data)
+            second = await writer.emit(session, "application.submitted", app_id, submitted_data)
     finally:
         correlation_id.reset(token)
 
@@ -418,7 +528,7 @@ async def test_outbox_to_consumer_end_to_end_keeps_correlation_id(engine: AsyncE
         engine=engine,
         producer=make_producer(KAFKA),
         validator=VALIDATOR,
-        handlers={"document.uploaded": handle, "decision.made": handle},
+        handlers={"document.uploaded": handle, "application.submitted": handle},
     )
     stop = asyncio.Event()
     runner = asyncio.create_task(

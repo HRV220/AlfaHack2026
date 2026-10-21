@@ -21,15 +21,23 @@ class OutboxRecord(BaseModel):
     attempts: int = 0
 
 
+# `clock_timestamp()`, а не `now()`: события одной транзакции получают разное время, и релей
+# сохраняет порядок их создания внутри ключа.
 INSERT_OUTBOX = text(
-    "INSERT INTO outbox (id, topic, key, payload) "
-    "VALUES (CAST(:id AS uuid), :topic, :key, CAST(:payload AS jsonb))"
+    "INSERT INTO outbox (id, topic, key, payload, created_at) "
+    "VALUES (CAST(:id AS uuid), :topic, :key, CAST(:payload AS jsonb), clock_timestamp())"
 )
 
 
+class ForeignTopicError(ValueError):
+    """Сервис пытается опубликовать событие топика, продюсер которого — другой сервис."""
+
+
 class OutboxWriter:
-    def __init__(self, validator: EventValidator) -> None:
+    def __init__(self, validator: EventValidator, service: str) -> None:
+        """`service` — имя сервиса-владельца outbox (`SERVICE_NAME`); чужие топики отклоняются."""
         self._validator = validator
+        self._service = service
 
     async def emit(
         self, session: AsyncSession, topic: str, key: str, payload: dict[str, Any]
@@ -39,7 +47,12 @@ class OutboxWriter:
         `payload` — это `data` события; конверт собирается здесь и проверяется до записи.
         Возвращает `event_id` (он же `outbox.id`).
         """
-        event = build_envelope(self._validator.topics.get(topic), key, payload)
+        spec = self._validator.topics.get(topic)
+        if spec.producer != self._service:
+            raise ForeignTopicError(
+                f"топик {topic!r} публикует {spec.producer!r}, а не {self._service!r}"
+            )
+        event = build_envelope(spec, key, payload)
         self._validator.validate(event)
         await session.execute(
             INSERT_OUTBOX,
